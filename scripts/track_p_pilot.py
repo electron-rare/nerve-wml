@@ -126,3 +126,49 @@ def run_p4(n_wmls: int = 4, k: int = 2) -> tuple[bool, torch.Tensor]:
     connected = len(visited) == n_wmls
 
     return connected, k_per_wml
+
+
+def run_gate_p() -> dict:
+    """Run P1..P4 end-to-end, returning a single JSON-serialisable report."""
+    torch.manual_seed(0)
+    cb = run_p1(steps=4000)
+    counts = cb.usage_counter.float()
+    p = counts / (counts.sum() + 1e-9)
+    p1_ent = -(p * (p + 1e-9).log2()).sum().item()
+    p1_perp = 2 ** p1_ent
+    p1_dead = (cb.usage_counter == 0).float().mean().item()
+
+    _, p2_retention = run_p2(steps=2000)
+    p3_collisions   = run_p3(n_cycles=200)
+    p4_connected, p4_k = run_p4(n_wmls=4, k=2)
+
+    all_passed = (
+        p1_dead      < 0.10
+        and p1_perp  >= 32
+        and p2_retention > 0.95
+        and p3_collisions == 0
+        and p4_connected
+        and bool((p4_k == 2).all())
+    )
+
+    return {
+        "p1_dead_code_fraction": p1_dead,
+        "p1_perplexity":         p1_perp,
+        "p2_retention":          p2_retention,
+        "p3_collision_count":    p3_collisions,
+        "p4_connected":          p4_connected,
+        "p4_k_per_wml":          p4_k,
+        "all_passed":            all_passed,
+    }
+
+
+if __name__ == "__main__":
+    import json
+
+    report = run_gate_p()
+    # Serialise: convert tensor → list for JSON compatibility.
+    serial = {
+        k: v.tolist() if hasattr(v, "tolist") else v
+        for k, v in report.items()
+    }
+    print(json.dumps(serial, indent=2))
