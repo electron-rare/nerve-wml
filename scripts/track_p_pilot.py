@@ -6,8 +6,10 @@ transducer, router, SimNerve). Scripts are idempotent given a fixed seed.
 from __future__ import annotations
 
 import torch
+from torch.optim import Adam
 
 from track_p.vq_codebook import VQCodebook
+from track_p.transducer import Transducer
 
 
 def run_p1(steps: int = 2000, dim: int = 32, size: int = 64) -> VQCodebook:
@@ -42,3 +44,34 @@ def run_p1(steps: int = 2000, dim: int = 32, size: int = 64) -> VQCodebook:
         _, _, loss = cb.quantize(z)
 
     return cb
+
+
+def run_p2(steps: int = 2000, alphabet_size: int = 64) -> tuple[Transducer, float]:
+    """P2 — train a transducer so that a known src→dst code permutation is learned.
+
+    We construct a ground-truth permutation π* and train the transducer to
+    reproduce it. Returns (trained_transducer, retention_fraction).
+    """
+    torch.manual_seed(0)
+    transducer = Transducer(alphabet_size=alphabet_size)
+    opt = Adam(transducer.parameters(), lr=1e-2)
+
+    target_perm = torch.randperm(alphabet_size)
+
+    for _ in range(steps):
+        src_codes = torch.randint(0, alphabet_size, (256,))
+        expected  = target_perm[src_codes]
+
+        row_logits = transducer.logits[src_codes]
+        loss = torch.nn.functional.cross_entropy(row_logits, expected)
+
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    # Retention = fraction of src codes mapped correctly under argmax.
+    with torch.no_grad():
+        pred = transducer.logits.argmax(dim=-1)
+        retention = (pred == target_perm).float().mean().item()
+
+    return transducer, retention
