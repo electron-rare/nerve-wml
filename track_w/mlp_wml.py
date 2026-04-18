@@ -78,11 +78,12 @@ class MlpWML(nn.Module):
         # Restore global RNG state.
         torch.set_rng_state(global_state)
 
-    # step() defined in Task 6/7 — intentionally left empty here.
     def step(self, nerve: Nerve, t: float) -> None:
-        """One tick: listen, MLP forward, emit π predictions to each routed dst.
+        """One tick: listen, MLP forward, emit π predictions, and
+        optionally emit ε errors if surprise exceeds threshold.
 
-        ε emission is wired in Task 7. For now this method only emits π.
+        Surprise is measured as the L2 norm between the current hidden
+        state and the model's prior (forward on zero input).
         """
         from nerve_core.neuroletter import Neuroletter, Phase, Role
         from track_w._decode import embed_inbound
@@ -102,6 +103,24 @@ class MlpWML(nn.Module):
                     code=code_pi, role=Role.PREDICTION, phase=Phase.GAMMA,
                     src=self.id, dst=dst, timestamp=t,
                 ))
+
+        # ε path. Surprise = L2 norm of (h − h_prior).
+        # h_prior is an MLP-forward of a zero vector: the model's prior
+        # expectation with no input.
+        h_prior  = self.core(torch.zeros_like(h_in).unsqueeze(0)).squeeze(0)
+        surprise = (h - h_prior).norm().item()
+
+        if surprise > self.threshold_eps:
+            eps_logits = self.emit_head_eps(h - h_prior)
+            code_eps   = int(eps_logits.argmax().item())
+            for dst in range(nerve.n_wmls):
+                if dst == self.id:
+                    continue
+                if nerve.routing_weight(self.id, dst) == 1.0:
+                    nerve.send(Neuroletter(
+                        code=code_eps, role=Role.ERROR, phase=Phase.THETA,
+                        src=self.id, dst=dst, timestamp=t,
+                    ))
 
     def parameters(self, *args, **kwargs) -> Iterable[Tensor]:  # type: ignore[override]
         return super().parameters(*args, **kwargs)

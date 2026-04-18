@@ -66,3 +66,27 @@ def test_mlp_wml_step_respects_sparse_routing():
 
     for dst in unreachable:
         assert nerve.listen(wml_id=dst) == []
+
+
+def test_mlp_wml_emits_eps_when_surprise_high_and_theta_active():
+    """With a large input mismatch and θ active (γ inactive), ε should fire."""
+    nerve = MockNerve(n_wmls=2, k=1, seed=0)
+    nerve.set_phase_active(gamma=False, theta=True)
+    wml = MlpWML(id=0, d_hidden=16, seed=0, threshold_eps=0.0)
+
+    # Synthesise a spike-like input letter in the wml's queue before step().
+    from nerve_core.neuroletter import Neuroletter, Phase, Role
+    nerve._queues[0].append(
+        Neuroletter(code=42, role=Role.ERROR, phase=Phase.THETA,
+                    src=1, dst=0, timestamp=0.0)
+    )
+
+    wml.step(nerve, t=0.0)
+
+    received = nerve.listen(wml_id=1, role=Role.ERROR)
+    # Under θ active + γ inactive + threshold 0 + non-trivial inbound,
+    # at least one ε must be emitted.
+    assert len(received) >= 1
+    for letter in received:
+        assert letter.role is Role.ERROR
+        assert letter.phase is Phase.THETA
