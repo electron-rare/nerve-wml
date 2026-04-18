@@ -33,3 +33,36 @@ def test_mlp_wml_seed_is_local():
     observed = torch.rand(1).item()
 
     assert expected == observed
+
+
+
+from nerve_core.neuroletter import Phase, Role
+from track_w.mock_nerve import MockNerve
+
+
+def test_mlp_wml_step_emits_pi_when_gamma_active():
+    nerve = MockNerve(n_wmls=2, k=1, seed=0)
+    nerve.set_phase_active(gamma=True, theta=False)
+    wml = MlpWML(id=0, d_hidden=16, seed=0)
+    wml.step(nerve, t=0.0)
+    received = nerve.listen(wml_id=1, role=Role.PREDICTION)
+    # At least one π should have been sent along the single active edge.
+    assert len(received) >= 1
+    for letter in received:
+        assert letter.role is Role.PREDICTION
+        assert letter.phase is Phase.GAMMA
+        assert letter.src == 0
+
+
+def test_mlp_wml_step_respects_sparse_routing():
+    """No message should reach a WML outside the router's topology."""
+    nerve = MockNerve(n_wmls=3, k=1, seed=0)
+    nerve.set_phase_active(gamma=True, theta=False)
+    wml = MlpWML(id=0, d_hidden=16, seed=0)
+    wml.step(nerve, t=0.0)
+
+    dsts_reachable = [j for j in range(3) if nerve.routing_weight(0, j) == 1.0]
+    unreachable    = [j for j in range(3) if j != 0 and j not in dsts_reachable]
+
+    for dst in unreachable:
+        assert nerve.listen(wml_id=dst) == []

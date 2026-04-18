@@ -79,8 +79,29 @@ class MlpWML(nn.Module):
         torch.set_rng_state(global_state)
 
     # step() defined in Task 6/7 — intentionally left empty here.
-    def step(self, nerve: Nerve, t: float) -> None:  # pragma: no cover
-        raise NotImplementedError("Task 6 defines MlpWML.step()")
+    def step(self, nerve: Nerve, t: float) -> None:
+        """One tick: listen, MLP forward, emit π predictions to each routed dst.
+
+        ε emission is wired in Task 7. For now this method only emits π.
+        """
+        from nerve_core.neuroletter import Neuroletter, Phase, Role
+        from track_w._decode import embed_inbound
+
+        inbound = nerve.listen(self.id)
+        h_in    = embed_inbound(inbound, self.codebook)
+        h       = self.core(h_in.unsqueeze(0)).squeeze(0)
+
+        pi_logits = self.emit_head_pi(h)
+        code_pi   = int(pi_logits.argmax().item())
+
+        for dst in range(nerve.n_wmls):
+            if dst == self.id:
+                continue
+            if nerve.routing_weight(self.id, dst) == 1.0:
+                nerve.send(Neuroletter(
+                    code=code_pi, role=Role.PREDICTION, phase=Phase.GAMMA,
+                    src=self.id, dst=dst, timestamp=t,
+                ))
 
     def parameters(self, *args, **kwargs) -> Iterable[Tensor]:  # type: ignore[override]
         return super().parameters(*args, **kwargs)
