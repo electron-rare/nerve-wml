@@ -1,4 +1,3 @@
-import torch
 
 from nerve_core.neuroletter import Neuroletter, Phase, Role
 from track_p.sim_nerve import SimNerve
@@ -25,8 +24,8 @@ def test_sim_nerve_filter_by_role():
     # γ oscillator starts at phase=0 (active), θ starts at phase=0.5 (inactive),
     # so only π is delivered and ε is held.
     delivered = nerve.listen(wml_id=1)
-    assert len([l for l in delivered if l.role is Role.PREDICTION]) == 1
-    assert len([l for l in delivered if l.role is Role.ERROR]) == 0
+    assert len([letter for letter in delivered if letter.role is Role.PREDICTION]) == 1
+    assert len([letter for letter in delivered if letter.role is Role.ERROR]) == 0
     # Tick until γ is inactive AND θ is active. θ starts at phase=0.5, so
     # θ re-enters its active window when its phase wraps back below 0.5.
     # At t=95ms : γ_phase ≈ 0.80 (inactive, γ priority released),
@@ -34,7 +33,7 @@ def test_sim_nerve_filter_by_role():
     for _ in range(95):
         nerve.tick(1e-3)
     delivered = nerve.listen(wml_id=1)
-    assert len([l for l in delivered if l.role is Role.ERROR]) == 1
+    assert len([letter for letter in delivered if letter.role is Role.ERROR]) == 1
 
 
 def test_sim_nerve_tick_advances_time():

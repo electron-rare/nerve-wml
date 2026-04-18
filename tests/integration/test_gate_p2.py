@@ -9,7 +9,7 @@ def test_p2_transducer_is_not_uniform_after_training():
     transducer, _ = run_p2(steps=2000)
 
     # Check one row: post-training distribution should be far from uniform.
-    import torch.nn.functional as F
+    import torch.nn.functional as F  # noqa: N812
     row = F.softmax(transducer.logits[7], dim=-1)
     uniform = torch.full_like(row, 1.0 / 64)
     kl = kl_divergence(row, uniform)

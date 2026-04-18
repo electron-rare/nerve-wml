@@ -4,7 +4,6 @@ See spec §8.2.
 """
 from __future__ import annotations
 
-import torch
 from torch import Tensor
 
 from .vq_codebook import VQCodebook
@@ -19,7 +18,10 @@ def empirical_capacity_bps(code_rate_hz: float, code_histogram: Tensor) -> float
 
 def dead_code_fraction(cb: VQCodebook) -> float:
     """Fraction of codes never assigned during usage tracking."""
-    return (cb.usage_counter == 0).float().mean().item()
+    dead = (cb.usage_counter == 0)
+    if isinstance(dead, bool):
+        return float(dead)
+    return dead.float().mean().item()
 
 
 def kl_divergence(p: Tensor, q: Tensor) -> Tensor:

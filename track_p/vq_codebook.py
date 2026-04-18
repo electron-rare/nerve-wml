@@ -18,6 +18,11 @@ class VQCodebook(nn.Module):
     - ema=False: embeddings are a regular nn.Parameter (baseline).
     """
 
+    embeddings: Tensor | nn.Parameter
+    ema_cluster_size: Tensor
+    ema_embed_sum: Tensor
+    usage_counter: Tensor
+
     def __init__(
         self,
         size: int,

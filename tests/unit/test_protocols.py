@@ -1,5 +1,6 @@
 from typing import get_type_hints
-from nerve_core.protocols import Nerve, WML
+
+from nerve_core.protocols import WML, Nerve
 
 
 def test_nerve_has_alphabet_size_constant():

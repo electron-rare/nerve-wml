@@ -1,9 +1,10 @@
 import math
+
 import torch
 
 from track_p.info_theoretic import (
-    empirical_capacity_bps,
     dead_code_fraction,
+    empirical_capacity_bps,
     kl_divergence,
 )
 from track_p.vq_codebook import VQCodebook

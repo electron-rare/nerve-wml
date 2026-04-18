@@ -9,10 +9,10 @@ import torch
 from torch.optim import Adam
 
 from nerve_core.neuroletter import Neuroletter, Phase, Role
-from track_p.sim_nerve import SimNerve
-from track_p.vq_codebook import VQCodebook
-from track_p.transducer import Transducer
 from track_p.router import SparseRouter
+from track_p.sim_nerve import SimNerve
+from track_p.transducer import Transducer
+from track_p.vq_codebook import VQCodebook
 
 
 def run_p1(steps: int = 2000, dim: int = 32, size: int = 64) -> VQCodebook:
@@ -96,7 +96,7 @@ def run_p3(n_cycles: int = 200, dt: float = 1e-3) -> int:
         nerve.tick(dt)
 
         delivered = nerve.listen(wml_id=1)
-        phases_delivered = {l.phase for l in delivered}
+        phases_delivered = {letter.phase for letter in delivered}
         if Phase.GAMMA in phases_delivered and Phase.THETA in phases_delivered:
             collision_count += 1
 

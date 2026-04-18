@@ -8,7 +8,7 @@ robust; phase-gated delivery appears in Task 14 when we wire pilot P3.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch import Tensor
@@ -78,14 +78,14 @@ class SimNerve:
             # θ messages only deliver when γ is NOT active (priority rule).
             return theta_on and not gamma_on
 
-        delivered = [l for l in pending if is_deliverable(l.phase)]
-        held      = [l for l in pending if not is_deliverable(l.phase)]
+        delivered = [letter for letter in pending if is_deliverable(letter.phase)]
+        held      = [letter for letter in pending if not is_deliverable(letter.phase)]
         self._queues[wml_id] = held
 
         if role is not None:
-            delivered = [l for l in delivered if l.role is role]
+            delivered = [letter for letter in delivered if letter.role is role]
         if phase is not None:
-            delivered = [l for l in delivered if l.phase is phase]
+            delivered = [letter for letter in delivered if letter.phase is phase]
 
         return delivered
 

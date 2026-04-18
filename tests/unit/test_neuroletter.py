@@ -1,11 +1,12 @@
 import pytest
-from nerve_core.neuroletter import Neuroletter, Role, Phase
+
+from nerve_core.neuroletter import Neuroletter, Phase, Role
 
 
 def test_neuroletter_is_frozen():
     n = Neuroletter(code=5, role=Role.PREDICTION, phase=Phase.GAMMA,
                     src=1, dst=2, timestamp=0.5)
-    with pytest.raises(Exception):
+    with pytest.raises(AttributeError):
         n.code = 6  # type: ignore[misc]
 
 

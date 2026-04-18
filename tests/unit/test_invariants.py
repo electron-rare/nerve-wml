@@ -1,4 +1,5 @@
 import pytest
+
 from nerve_core.invariants import (
     assert_n1_silence_legal,
     assert_n3_role_phase_consistent,

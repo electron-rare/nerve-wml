@@ -1,4 +1,3 @@
-import torch
 
 from track_p.router import SparseRouter
 
