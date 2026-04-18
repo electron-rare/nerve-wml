@@ -1,11 +1,15 @@
 """Track-W pilot scripts: W1-W4 curriculum drivers + Gate W aggregator."""
 from __future__ import annotations
 
+import json
+
 import torch
 
+from track_w.lif_wml import LifWML
 from track_w.mlp_wml import MlpWML
 from track_w.mock_nerve import MockNerve
 from track_w.tasks.flow_proxy import FlowProxyTask
+from track_w.tasks.split_mnist import SplitMnistLikeTask
 from track_w.training import train_wml_on_task
 
 
@@ -26,9 +30,6 @@ def run_w1(steps: int = 400) -> float:
         h = wmls[0].core(x)
         pred = wmls[0].emit_head_pi(h)[:, : task.n_classes].argmax(-1)
     return (pred == y).float().mean().item()
-
-
-from track_w.lif_wml import LifWML
 
 
 def run_w2(steps: int = 400) -> dict:
@@ -55,7 +56,9 @@ def run_w2(steps: int = 400) -> dict:
             i_in   = wml.input_proj(pooled)
             probe_logits = i_in[:, : task.n_classes]
             loss = torch.nn.functional.cross_entropy(probe_logits, y)
-            opt.zero_grad(); loss.backward(); opt.step()
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
 
     # Evaluation: use MLP π-head and LIF input_proj probe, unify wrt task classes.
     x, y = task.sample(batch=256)
@@ -106,7 +109,9 @@ def run_w3(steps: int = 400) -> tuple[float, float]:
                 sep = -(eps_dist * (eps_dist / (pi_dist + 1e-9)).log()).sum()
                 total = total + 0.001 * sep
 
-            opt.zero_grad(); total.backward(); opt.step()
+            opt.zero_grad()
+            total.backward()
+            opt.step()
 
         x, y = task.sample(batch=256)
         with torch.no_grad():
@@ -116,8 +121,6 @@ def run_w3(steps: int = 400) -> tuple[float, float]:
     baseline = _train_and_eval(use_eps=False)
     with_eps = _train_and_eval(use_eps=True)
     return baseline, with_eps
-
-from track_w.tasks.split_mnist import SplitMnistLikeTask
 
 
 def run_w4(steps: int = 400) -> dict:
@@ -145,7 +148,9 @@ def run_w4(steps: int = 400) -> dict:
                 logits = all_logits[:, 2:4]  # Task 1: classes 2-3
                 y_local = y - 2
             loss = torch.nn.functional.cross_entropy(logits, y_local)
-            optimizer.zero_grad(); loss.backward(); optimizer.step()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
     def _eval(task, task_id):
         x, y = task.sample(batch=256)
@@ -210,6 +215,4 @@ def run_gate_w() -> dict:
 
 
 if __name__ == "__main__":
-    import json
-
     print(json.dumps(run_gate_w(), indent=2))

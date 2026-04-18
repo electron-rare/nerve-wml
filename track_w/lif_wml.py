@@ -9,7 +9,7 @@ step() and emission are implemented in Tasks 10 and 11.
 """
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch import Tensor, nn
@@ -18,6 +18,8 @@ from nerve_core.protocols import Nerve
 
 
 class LifWML(nn.Module):
+    v_mem: Tensor
+
     def __init__(
         self,
         id:            int,
@@ -91,7 +93,7 @@ class LifWML(nn.Module):
 
         # π path — fires on confident match.
         if has_spikes and conf >= 0.3:
-            for dst in range(nerve.n_wmls):
+            for dst in range(nerve.n_wmls):  # type: ignore[attr-defined]
                 if dst == self.id:
                     continue
                 if nerve.routing_weight(self.id, dst) == 1.0:
@@ -104,7 +106,7 @@ class LifWML(nn.Module):
         expected_rate = 0.3 * self.n_neurons
         mismatch = abs(spike_count - expected_rate) / max(expected_rate, 1)
         if mismatch > self.threshold_eps:
-            for dst in range(nerve.n_wmls):
+            for dst in range(nerve.n_wmls):  # type: ignore[attr-defined]
                 if dst == self.id:
                     continue
                 if nerve.routing_weight(self.id, dst) == 1.0:

@@ -47,12 +47,12 @@ def test_mock_nerve_gamma_priority_holds_theta():
     nerve.send(_letter(2, 1, Role.ERROR,      Phase.THETA))
 
     delivered = nerve.listen(wml_id=1)
-    assert [l.role for l in delivered] == [Role.PREDICTION]
+    assert [letter.role for letter in delivered] == [Role.PREDICTION]
 
     # Now turn γ off — θ should deliver.
     nerve.set_phase_active(gamma=False, theta=True)
     delivered = nerve.listen(wml_id=1)
-    assert [l.role for l in delivered] == [Role.ERROR]
+    assert [letter.role for letter in delivered] == [Role.ERROR]
 
 
 def test_mock_nerve_silence_when_inactive():

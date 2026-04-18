@@ -8,7 +8,7 @@ The step() method is defined in Task 6 (π) and Task 7 (ε).
 """
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch import Tensor, nn
@@ -46,7 +46,7 @@ class MlpWML(nn.Module):
         global_state = torch.get_rng_state()
 
         # 4-layer MLP core with local generator init.
-        layers = []
+        layers: list[nn.Module] = []
         for _ in range(4):
             lin = nn.Linear(d_hidden, d_hidden)
             # Manually set weights using local generator
@@ -95,7 +95,7 @@ class MlpWML(nn.Module):
         pi_logits = self.emit_head_pi(h)
         code_pi   = int(pi_logits.argmax().item())
 
-        for dst in range(nerve.n_wmls):
+        for dst in range(nerve.n_wmls):  # type: ignore[attr-defined]
             if dst == self.id:
                 continue
             if nerve.routing_weight(self.id, dst) == 1.0:
@@ -113,7 +113,7 @@ class MlpWML(nn.Module):
         if surprise > self.threshold_eps:
             eps_logits = self.emit_head_eps(h - h_prior)
             code_eps   = int(eps_logits.argmax().item())
-            for dst in range(nerve.n_wmls):
+            for dst in range(nerve.n_wmls):  # type: ignore[attr-defined]
                 if dst == self.id:
                     continue
                 if nerve.routing_weight(self.id, dst) == 1.0:

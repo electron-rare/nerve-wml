@@ -19,9 +19,11 @@ class SplitMnistLikeTask:
     def __post_init__(self) -> None:
         # Two flow-proxy tasks with non-overlapping label ranges, implemented
         # by using different class counts and re-labelling at sample time.
+        task0 = FlowProxyTask(dim=self.dim, n_classes=2, seed=self.seed)
+        task1 = FlowProxyTask(dim=self.dim, n_classes=2, seed=self.seed + 1)
         self.subtasks = [
-            _LabelOffsetTask(FlowProxyTask(dim=self.dim, n_classes=2, seed=self.seed), offset=0),
-            _LabelOffsetTask(FlowProxyTask(dim=self.dim, n_classes=2, seed=self.seed + 1), offset=2),
+            _LabelOffsetTask(task0, offset=0),
+            _LabelOffsetTask(task1, offset=2),
         ]
 
 

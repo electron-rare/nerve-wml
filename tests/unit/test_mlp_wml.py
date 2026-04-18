@@ -1,6 +1,8 @@
 import torch
 
+from nerve_core.neuroletter import Phase, Role
 from track_w.mlp_wml import MlpWML
+from track_w.mock_nerve import MockNerve
 
 
 def test_mlp_wml_has_required_attrs():
@@ -33,11 +35,6 @@ def test_mlp_wml_seed_is_local():
     observed = torch.rand(1).item()
 
     assert expected == observed
-
-
-
-from nerve_core.neuroletter import Phase, Role
-from track_w.mock_nerve import MockNerve
 
 
 def test_mlp_wml_step_emits_pi_when_gamma_active():

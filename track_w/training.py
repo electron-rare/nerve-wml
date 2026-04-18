@@ -39,7 +39,9 @@ def train_wml_on_task(wml, nerve, task, *, steps: int = 500, lr: float = 1e-3) -
         vq_loss = 0.25 * ((h - q.detach()) ** 2).mean() + ((q - h.detach()) ** 2).mean()
 
         total = composite_loss(task_loss=task_loss, vq_loss=vq_loss)
-        opt.zero_grad(); total.backward(); opt.step()
+        opt.zero_grad()
+        total.backward()
+        opt.step()
 
         losses.append(total.item())
 

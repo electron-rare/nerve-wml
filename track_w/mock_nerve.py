@@ -13,7 +13,7 @@ See spec §4.2 (Nerve) and §3 (two-tracks architecture).
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable
+from collections.abc import Iterable
 
 import torch
 from torch import Tensor
@@ -93,9 +93,9 @@ class MockNerve:
         self._queues[wml_id] = held
 
         if role is not None:
-            delivered = [l for l in delivered if l.role is role]
+            delivered = [letter for letter in delivered if letter.role is role]
         if phase is not None:
-            delivered = [l for l in delivered if l.phase is phase]
+            delivered = [letter for letter in delivered if letter.phase is phase]
         return delivered
 
     def time(self) -> float:

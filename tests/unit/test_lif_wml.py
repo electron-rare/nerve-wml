@@ -1,6 +1,8 @@
 import torch
 
+from nerve_core.neuroletter import Phase, Role
 from track_w.lif_wml import LifWML
+from track_w.mock_nerve import MockNerve
 
 
 def test_lif_wml_has_required_attrs():
@@ -26,10 +28,6 @@ def test_lif_wml_seed_is_local():
     observed = torch.rand(1).item()
 
     assert expected == observed
-
-
-from nerve_core.neuroletter import Phase, Role
-from track_w.mock_nerve import MockNerve
 
 
 def test_lif_wml_step_advances_membrane():
@@ -67,7 +65,7 @@ def test_lif_wml_step_emits_pi_when_pattern_confident():
     received = nerve.listen(wml_id=1, role=Role.PREDICTION)
     # Emission is best-effort (decoder may return no match until LIF stabilises).
     # The assertion is that any emissions that happened are well-formed.
-    assert all(l.src == 0 and l.phase is Phase.GAMMA for l in received)
+    assert all(letter.src == 0 and letter.phase is Phase.GAMMA for letter in received)
 
 
 def test_lif_wml_emits_eps_when_mismatch_high():
@@ -86,4 +84,4 @@ def test_lif_wml_emits_eps_when_mismatch_high():
 
     received = nerve.listen(wml_id=1, role=Role.ERROR)
     # Threshold 0 + θ active + strong drive: ε must be emitted.
-    assert any(l.role is Role.ERROR and l.phase is Phase.THETA for l in received)
+    assert any(letter.role is Role.ERROR and letter.phase is Phase.THETA for letter in received)
