@@ -8,6 +8,8 @@ from __future__ import annotations
 import torch
 from torch.optim import Adam
 
+from nerve_core.neuroletter import Neuroletter, Phase, Role
+from track_p.sim_nerve import SimNerve
 from track_p.vq_codebook import VQCodebook
 from track_p.transducer import Transducer
 
@@ -75,3 +77,26 @@ def run_p2(steps: int = 2000, alphabet_size: int = 64) -> tuple[Transducer, floa
         retention = (pred == target_perm).float().mean().item()
 
     return transducer, retention
+
+
+def run_p3(n_cycles: int = 200, dt: float = 1e-3) -> int:
+    """P3 — run SimNerve for n_cycles γ-periods; count phase collisions.
+
+    A collision is two letters delivered to the same wml at the same tick
+    under different phases, which would break the multiplexing invariant.
+    """
+    nerve = SimNerve(n_wmls=4, k=2)
+    collision_count = 0
+
+    for _ in range(n_cycles):
+        # Emit one π (γ) and one ε (θ) to wml 1 in this cycle.
+        nerve.send(Neuroletter(3, Role.PREDICTION, Phase.GAMMA, 0, 1, nerve.time()))
+        nerve.send(Neuroletter(7, Role.ERROR,      Phase.THETA, 2, 1, nerve.time()))
+        nerve.tick(dt)
+
+        delivered = nerve.listen(wml_id=1)
+        phases_delivered = {l.phase for l in delivered}
+        if Phase.GAMMA in phases_delivered and Phase.THETA in phases_delivered:
+            collision_count += 1
+
+    return collision_count

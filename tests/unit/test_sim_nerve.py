@@ -22,10 +22,16 @@ def test_sim_nerve_filter_by_role():
     nerve = SimNerve(n_wmls=4, k=2)
     nerve.send(_letter(0, 1, Role.PREDICTION, Phase.GAMMA, t=0.0))
     nerve.send(_letter(2, 1, Role.ERROR,      Phase.THETA, t=0.0))
-    assert len(nerve.listen(wml_id=1, role=Role.PREDICTION)) == 1
-    # listen() clears the queue, so we need a fresh fire for the ε test.
-    nerve.send(_letter(2, 1, Role.ERROR, Phase.THETA, t=0.0))
-    assert len(nerve.listen(wml_id=1, role=Role.ERROR)) == 1
+    # γ oscillator starts at phase=0 (active), θ starts at phase=0.5 (inactive),
+    # so only π is delivered and ε is held.
+    delivered = nerve.listen(wml_id=1)
+    assert len([l for l in delivered if l.role is Role.PREDICTION]) == 1
+    assert len([l for l in delivered if l.role is Role.ERROR]) == 0
+    # Now wait for θ to become active and listen again
+    for _ in range(84):
+        nerve.tick(1e-3)
+    delivered = nerve.listen(wml_id=1)
+    assert len([l for l in delivered if l.role is Role.ERROR]) == 1
 
 
 def test_sim_nerve_tick_advances_time():
