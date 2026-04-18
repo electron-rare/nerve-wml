@@ -22,7 +22,7 @@ def test_p3_theta_eventually_delivers():
     dt = 1e-3
     theta_delivered = 0
 
-    for cycle in range(500):
+    for _cycle in range(500):
         nerve.send(Neuroletter(3, Role.PREDICTION, Phase.GAMMA, 0, 1, nerve.time()))
         nerve.send(Neuroletter(7, Role.ERROR,      Phase.THETA, 2, 1, nerve.time()))
         nerve.tick(dt)
