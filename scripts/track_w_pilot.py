@@ -69,3 +69,50 @@ def run_w2(steps: int = 400) -> dict:
         acc_lif  = (pred_lif == y).float().mean().item()
 
     return {"acc_mlp": acc_mlp, "acc_lif": acc_lif}
+
+
+
+def run_w3(steps: int = 400) -> tuple[float, float]:
+    """W3 — compare training with vs without ε feedback on the role_sep loss.
+
+    Baseline: only task + vq losses. With ε: add role_sep loss which pushes
+    the ε head distribution away from the π head distribution.
+    """
+    torch.manual_seed(0)
+    task = FlowProxyTask(dim=6, n_classes=16, seed=0)
+
+    def _train_and_eval(use_eps: bool) -> float:
+        nerve = MockNerve(n_wmls=2, k=1, seed=0)
+        nerve.set_phase_active(gamma=True, theta=False)
+        wml = MlpWML(id=0, d_hidden=6, seed=0)
+        opt = torch.optim.Adam(wml.parameters(), lr=1e-2)
+
+        for _ in range(steps):
+            x, y = task.sample(batch=64)
+            h = wml.core(x)
+            logits_pi  = wml.emit_head_pi(h)[:, : task.n_classes]
+            task_loss  = torch.nn.functional.cross_entropy(logits_pi, y)
+
+            dist = torch.cdist(h, wml.codebook)
+            idx  = dist.argmin(-1)
+            q    = wml.codebook[idx]
+            vq_loss = 0.25 * ((h - q.detach()) ** 2).mean() + ((q - h.detach()) ** 2).mean()
+
+            total = task_loss + 0.25 * vq_loss
+            if use_eps:
+                logits_eps = wml.emit_head_eps(h)
+                pi_dist  = torch.nn.functional.softmax(wml.emit_head_pi(h), dim=-1).mean(0)
+                eps_dist = torch.nn.functional.softmax(logits_eps,          dim=-1).mean(0)
+                sep = -(eps_dist * (eps_dist / (pi_dist + 1e-9)).log()).sum()
+                total = total + 0.001 * sep
+
+            opt.zero_grad(); total.backward(); opt.step()
+
+        x, y = task.sample(batch=256)
+        with torch.no_grad():
+            pred = wml.emit_head_pi(wml.core(x))[:, : task.n_classes].argmax(-1)
+        return (pred == y).float().mean().item()
+
+    baseline = _train_and_eval(use_eps=False)
+    with_eps = _train_and_eval(use_eps=True)
+    return baseline, with_eps
