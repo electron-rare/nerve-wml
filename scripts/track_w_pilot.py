@@ -517,5 +517,66 @@ def run_w1_n16(steps: int = 400) -> float:
     return (pred == y).float().mean().item()
 
 
+def run_w2_n16(steps: int = 400) -> dict:
+    """W2-N16 — half MLP / half LIF pool on FlowProxyTask.
+
+    Per substrate: train WMLs of that type, then evaluate via their
+    substrate-native classifier. Returns mean accuracy per substrate.
+    """
+    from track_w.pool_factory import build_pool, k_for_n
+    import numpy as np
+
+    torch.manual_seed(0)
+    n_wmls = 16
+    nerve = MockNerve(n_wmls=n_wmls, k=k_for_n(n_wmls), seed=0)
+    nerve.set_phase_active(gamma=True, theta=False)
+    pool = build_pool(n_wmls=n_wmls, mlp_frac=0.5, seed=0)
+    task = FlowProxyTask(dim=16, n_classes=4, seed=0)
+
+    # Train MLPs via task loss.
+    for wml in pool:
+        if isinstance(wml, MlpWML):
+            train_wml_on_task(wml, nerve, task, steps=steps, lr=1e-2)
+
+    # Train LIF input_proj + probe via linear probe on x.
+    for wml in pool:
+        if isinstance(wml, LifWML):
+            probe = torch.nn.Linear(wml.n_neurons, task.n_classes)
+            opt = torch.optim.Adam(
+                list(wml.input_proj.parameters()) + list(probe.parameters()),
+                lr=1e-2,
+            )
+            for _ in range(steps):
+                x, y = task.sample(batch=64)
+                pooled = x @ (torch.eye(16, wml.n_neurons) / 4)
+                logits = probe(wml.input_proj(pooled))
+                loss = torch.nn.functional.cross_entropy(logits, y)
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+            # Cache the probe for eval.
+            wml._probe = probe
+
+    # Evaluate.
+    x, y = task.sample(batch=256)
+    mlp_accs, lif_accs = [], []
+    with torch.no_grad():
+        for wml in pool:
+            if isinstance(wml, MlpWML):
+                pred = wml.emit_head_pi(wml.core(x))[:, : task.n_classes].argmax(-1)
+                mlp_accs.append((pred == y).float().mean().item())
+            else:
+                pooled = x @ (torch.eye(16, wml.n_neurons) / 4)
+                pred = wml._probe(wml.input_proj(pooled)).argmax(-1)
+                lif_accs.append((pred == y).float().mean().item())
+
+    return {
+        "mean_acc_mlp": float(np.mean(mlp_accs)),
+        "mean_acc_lif": float(np.mean(lif_accs)),
+        "n_mlp": len(mlp_accs),
+        "n_lif": len(lif_accs),
+    }
+
+
 if __name__ == "__main__":
     print(json.dumps(run_gate_w(), indent=2))
