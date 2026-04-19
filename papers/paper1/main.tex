@@ -32,6 +32,18 @@ See the companion specification (\texttt{docs/superpowers/specs/2026-04-18-nerve
 for the full framework. Section~\ref{sec:method} reproduces the
 essentials for readers.
 
+\section{Related Work}
+
+The nerve protocol sits at the intersection of four research lines. We relate each briefly below.
+
+\textbf{Predictive coding.} Rao and Ballard~\cite{rao1999predictive} introduced predictive coding as a unifying interpretation of extra-classical receptive-field effects in the visual cortex, where each layer transmits its prediction downstream and receives a residual error upstream. Bastos et al.~\cite{bastos2012canonical} then proposed the canonical microcircuit for predictive coding, mapping predictions to $\gamma$-band activity in superficial layers and errors to $\theta$/$\alpha$-band activity in deep layers. Our $\gamma$/$\theta$ multiplexing (see \S\ref{sec:method}) is a direct computational transcription of this canonical microcircuit, with $\gamma$-priority replacing the biological phase-locking.
+
+\textbf{Discrete latent codebooks.} van den Oord et al.~\cite{vandenoord2017neural} introduced VQ-VAE, the vector-quantized variational auto-encoder in which a continuous encoder output is snapped to one of $K$ discrete codes. We reuse the commitment-loss training recipe for each WML's local codebook (\S\ref{sec:method}). Zeghidour et al.~\cite{zeghidour2022soundstream} observed that random-init VQ training collapses onto a small subset of codes, and proposed codebook rotation --- re-seeding unused codes with live input points. Our Plan 4a experiments confirm that rotation is necessary for random-init convergence on the $64$-code alphabet (\S\ref{sec:experiments}).
+
+\textbf{Surrogate-gradient spiking neural networks.} Neftci et al.~\cite{neftci2019surrogate} survey surrogate-gradient training of SNNs, where the non-differentiable Heaviside spike is replaced at back-propagation time by a smooth pseudo-derivative (we use the fast-sigmoid variant). This makes our \texttt{LifWML} implementation directly trainable alongside the differentiable \texttt{MlpWML} through the same task loss, which is the precondition for our polymorphie claim.
+
+To our knowledge, no prior system combines all four threads into a single substrate-agnostic communication protocol. The nerve protocol contributes the integration, not any of the individual techniques.
+
 \section{Method}
 \label{sec:method}
 
