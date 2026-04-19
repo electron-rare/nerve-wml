@@ -42,6 +42,56 @@ def render_cycle_trace(
     plt.close(fig)
 
 
+def render_w4_forgetting_bars(
+    *,
+    output_path: str = "papers/paper1/figures/w4_forgetting.pdf",
+    n_seeds:     int = 3,
+    steps:       int = 400,
+) -> None:
+    """Figure 2: W4 forgetting across three regimes (baseline / shared / rehearsal)."""
+    import torch
+    from scripts.track_w_pilot import run_w4, run_w4_multi_seed
+
+    # Baseline (disjoint heads): deterministic across seeds, so measure once per seed.
+    baseline_forgetting = []
+    for s in range(n_seeds):
+        torch.manual_seed(s)
+        r = run_w4(steps=steps)
+        baseline_forgetting.append(
+            (r["acc_task0_initial"] - r["acc_task0_after_task1"])
+            / max(r["acc_task0_initial"], 1e-6)
+        )
+
+    # Shared / rehearsal: reuse the existing multi-seed helper.
+    torch.manual_seed(0)
+    shared_report = run_w4_multi_seed(seeds=list(range(n_seeds)), steps=steps)
+
+    regimes = [
+        ("Baseline\n(disjoint)",       baseline_forgetting),
+        ("Shared head\n(no rehearsal)", shared_report["forgetting_shared"]),
+        ("Shared head\n(+30% rehearsal)", shared_report["forgetting_rehearsal"]),
+    ]
+
+    means = [float(np.mean(v)) for _, v in regimes]
+    errs  = [float(np.std(v))  for _, v in regimes]
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(6, 3))
+    positions = range(len(regimes))
+    ax.bar(list(positions), means, yerr=errs, capsize=6,
+           color=["#1f77b4", "#d62728", "#2ca02c"])
+    ax.set_xticks(list(positions))
+    ax.set_xticklabels([label for label, _ in regimes])
+    ax.set_ylim(0, 1.1)
+    ax.set_ylabel("Forgetting (task 0 retention loss)")
+    ax.set_title("Gate W4: catastrophic forgetting across regimes")
+    ax.axhline(y=0.20, color="gray", linestyle="--", linewidth=1,
+               label="gate threshold 20%")
+    ax.legend(loc="upper right")
+    fig.savefig(output_path, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main() -> None:
     render_cycle_trace()
     print("paper figures rendered.")
