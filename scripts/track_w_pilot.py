@@ -198,7 +198,9 @@ def run_w4_shared_head(steps: int = 400) -> dict:
             x, y = task.sample(batch=64)
             logits = wml.emit_head_pi(wml.core(x))[:, : 4]
             loss = torch.nn.functional.cross_entropy(logits, y)
-            opt.zero_grad(); loss.backward(); opt.step()
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
 
     def _eval(task):
         x, y = task.sample(batch=256)
@@ -233,7 +235,8 @@ def run_w2_true_lif(steps: int = 400) -> dict:
 
     No gate threshold enforced — spec §13.1 tracks the measured gap.
     """
-    import torch.nn.functional as F
+    import torch.nn.functional as torch_func
+
     from track_w._surrogate import spike_with_surrogate
 
     torch.manual_seed(0)
@@ -262,8 +265,10 @@ def run_w2_true_lif(steps: int = 400) -> dict:
             norms * (spikes_batch.norm(dim=-1, keepdim=True) + 1e-6)
         )
         logits = sims[:, : task.n_classes]
-        loss = F.cross_entropy(logits, y)
-        opt.zero_grad(); loss.backward(); opt.step()
+        loss = torch_func.cross_entropy(logits, y)
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
 
     # Evaluation.
     x, y = task.sample(batch=256)
@@ -351,7 +356,9 @@ def run_w4_rehearsal(steps: int = 400, rehearsal_frac: float = 0.3) -> dict:
     # Task 0 pure.
     for _ in range(steps):
         loss = _step_loss(split.subtasks[0], 64)
-        opt.zero_grad(); loss.backward(); opt.step()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
 
     acc0_initial = _eval_on(wml, split.subtasks[0])
 
@@ -362,7 +369,9 @@ def run_w4_rehearsal(steps: int = 400, rehearsal_frac: float = 0.3) -> dict:
         loss_new = _step_loss(split.subtasks[1], n_new)
         loss_old = _step_loss(split.subtasks[0], n_rehearsal)
         loss = (loss_new * n_new + loss_old * n_rehearsal) / 64
-        opt.zero_grad(); loss.backward(); opt.step()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
 
     acc0_after = _eval_on(wml, split.subtasks[0])
     acc1_after = _eval_on(wml, split.subtasks[1])

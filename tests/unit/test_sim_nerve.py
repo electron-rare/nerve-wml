@@ -63,6 +63,6 @@ def test_sim_nerve_priority_can_be_disabled():
     nerve.send(Neuroletter(3, Role.PREDICTION, Phase.GAMMA, 0, 1, 0.0))
     nerve.send(Neuroletter(7, Role.ERROR,      Phase.THETA, 2, 1, 0.0))
     delivered = nerve.listen(wml_id=1)
-    roles = {l.role for l in delivered}
+    roles = {letter.role for letter in delivered}
     assert Role.PREDICTION in roles
     assert Role.ERROR in roles

@@ -55,6 +55,7 @@ def run_p1_random_init(steps: int = 16000, dim: int = 32, size: int = 64):
     Resolves Debt 4: reaches dead_code < 10 % without cluster-center leak.
     """
     import torch
+
     from track_p.vq_codebook import VQCodebook
 
     torch.manual_seed(0)
@@ -201,7 +202,7 @@ def run_p3_no_priority(n_cycles: int = 1000, dt: float = 1e-3) -> float:
         nerve.send(Neuroletter(7, Role.ERROR,      Phase.THETA, 2, 1, nerve.time()))
         nerve.tick(dt)
         delivered = nerve.listen(wml_id=1)
-        phases = {l.phase for l in delivered}
+        phases = {letter.phase for letter in delivered}
         if Phase.GAMMA in phases and Phase.THETA in phases:
             collision_count += 1
 
