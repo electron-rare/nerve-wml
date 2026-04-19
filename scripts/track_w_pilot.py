@@ -320,5 +320,60 @@ def run_gate_w() -> dict:
     }
 
 
+def _eval_on(wml, task) -> float:
+    import torch
+    x, y = task.sample(batch=256)
+    with torch.no_grad():
+        pred = wml.emit_head_pi(wml.core(x))[:, : 4].argmax(-1)
+    return (pred == y).float().mean().item()
+
+
+def run_w4_rehearsal(steps: int = 400, rehearsal_frac: float = 0.3) -> dict:
+    """W4 honest — Task 1 training mixes a fraction of Task 0 samples
+    (rehearsal buffer) to prevent catastrophic forgetting. Shared head,
+    same lr across tasks.
+
+    Target (spec §13.1): forgetting < 20 %.
+    """
+    import torch
+    torch.manual_seed(0)
+    nerve = MockNerve(n_wmls=2, k=1, seed=0)
+    nerve.set_phase_active(gamma=True, theta=False)
+    wml   = MlpWML(id=0, d_hidden=16, seed=0)
+    split = SplitMnistLikeTask(seed=0)
+    opt   = torch.optim.Adam(wml.parameters(), lr=1e-2)
+
+    def _step_loss(task, batch_size):
+        x, y = task.sample(batch=batch_size)
+        logits = wml.emit_head_pi(wml.core(x))[:, : 4]
+        return torch.nn.functional.cross_entropy(logits, y)
+
+    # Task 0 pure.
+    for _ in range(steps):
+        loss = _step_loss(split.subtasks[0], 64)
+        opt.zero_grad(); loss.backward(); opt.step()
+
+    acc0_initial = _eval_on(wml, split.subtasks[0])
+
+    # Task 1 with rehearsal mix.
+    n_rehearsal = int(64 * rehearsal_frac)
+    n_new = 64 - n_rehearsal
+    for _ in range(steps):
+        loss_new = _step_loss(split.subtasks[1], n_new)
+        loss_old = _step_loss(split.subtasks[0], n_rehearsal)
+        loss = (loss_new * n_new + loss_old * n_rehearsal) / 64
+        opt.zero_grad(); loss.backward(); opt.step()
+
+    acc0_after = _eval_on(wml, split.subtasks[0])
+    acc1_after = _eval_on(wml, split.subtasks[1])
+
+    return {
+        "acc_task0_initial":     acc0_initial,
+        "acc_task0_after_task1": acc0_after,
+        "acc_task1_after_task1": acc1_after,
+        "forgetting":            (acc0_initial - acc0_after) / max(acc0_initial, 1e-6),
+    }
+
+
 if __name__ == "__main__":
     print(json.dumps(run_gate_w(), indent=2))
