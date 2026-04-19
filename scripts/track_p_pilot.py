@@ -194,6 +194,28 @@ def run_gate_p() -> dict:
     }
 
 
+def run_p3_no_priority(n_cycles: int = 1000, dt: float = 1e-3) -> float:
+    """P3 ablation — run SimNerve WITHOUT the γ-priority rule.
+
+    Returns collision_rate: fraction of cycles where both γ and θ letters
+    are delivered in the same listen() call. Spec §13.1 predicts ~25 %
+    (γ 50 % active × θ 50 % active, independent).
+    """
+    nerve = SimNerve(n_wmls=4, k=2, priority_rule=False)
+    collision_count = 0
+
+    for _ in range(n_cycles):
+        nerve.send(Neuroletter(3, Role.PREDICTION, Phase.GAMMA, 0, 1, nerve.time()))
+        nerve.send(Neuroletter(7, Role.ERROR,      Phase.THETA, 2, 1, nerve.time()))
+        nerve.tick(dt)
+        delivered = nerve.listen(wml_id=1)
+        phases = {l.phase for l in delivered}
+        if Phase.GAMMA in phases and Phase.THETA in phases:
+            collision_count += 1
+
+    return collision_count / n_cycles
+
+
 if __name__ == "__main__":
     import json
 
