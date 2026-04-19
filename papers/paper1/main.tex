@@ -18,13 +18,19 @@ We introduce a nerve protocol — discrete neuroletters drawn from a
 learned local vocabulary, multiplexed on gamma/theta rhythms, and
 routed over a sparse learned topology — that lets heterogeneous
 neural modules (World Model Languages, or WMLs) exchange information
-without sharing a substrate. We validate the protocol in two stages.
-Track-P demonstrates protocol correctness on toy signals (Gate P);
-Track-W demonstrates that MLP-based and LIF-based WMLs interoperate
-with less than 5\% performance gap through the same nerve interface
-(Gate W). A merge experiment fine-tunes only the per-edge transducers
-and retains 95\% of baseline accuracy (Gate M). All experimental
-numbers in this draft resolve to deterministic run identifiers.
+without sharing a substrate. We validate the protocol across eleven
+gates: Track-P correctness on toy signals (Gate P), MLP$\leftrightarrow$LIF
+polymorphie under 5\% (Gate W), merge fine-tuning retaining 95\%
+of baseline (Gate M), resolution of four scientific shortcuts from
+the initial drafts (Gate M2), scaling to $N\in\{16,32\}$ pools
+(Gate Scale), a neuroletter-semantics extraction artefact (Gate
+Interp), a Loihi/Akida INT8 export pipeline (Gate Neuro), an
+$\varepsilon$-trace consolidation bridge to dream-of-kiki (Gate
+Dream, partial), an adaptive-alphabet shrink/grow cycle (Gate
+Adaptive), and an env-gated advisory-only plug-in for micro-kiki
+(Gate LLM Advisor). All eleven gates ship with reproducible
+tests; every numeric claim resolves to a deterministic run
+identifier.
 \end{abstract}
 
 \section{Introduction}
@@ -223,6 +229,52 @@ of at least 1\,KB. The artefact is a reviewer-inspectable
 \texttt{code\,$\to$\,concept} table --- not a universal semantics, but
 a reproducible snapshot of what the trained WML treats as equivalent.
 
+\section{Integrations}
+\label{sec:integrations}
+
+Beyond the core gates, four integration surfaces are validated as software
+pipelines. All are env-gated and return to a no-op when the target is absent,
+so nerve-wml can be deployed alongside heterogeneous hosts without coupling
+to their release cadences.
+
+\textit{Adaptive alphabet (Gate Adaptive).}
+The 64-code codebook is fixed per WML at gate time.
+\texttt{track\_p.adaptive\_codebook.AdaptiveCodebook} implements an
+\texttt{active\_mask} over a fixed 64-slot storage so shrink and grow
+become logical (not physical) operations. \texttt{bridge.transducer\_resize}
+produces a reshaped \texttt{Transducer} preserving argmax on kept rows.
+\texttt{gate-adaptive-passed} verifies a shrink-then-grow cycle completes
+without the alphabet collapsing below 4 codes.
+
+\textit{Neuromorphic export (Gate Neuro).} LifWML $\to$ INT8 artefact
+(\texttt{neuromorphic.export.quantize\_lif\_wml}) $\to$ pure-numpy
+replay (\texttt{MockNeuromorphicRunner}) $\to$ vendor stubs for
+Intel Loihi~2 and BrainChip Akida. On an untrained LifWML the
+PyTorch-to-mock delta is $\sim 19\%$ (INT8 quantization of binary-like
+codebooks is coarse); trained LIFs are expected to tighten this.
+The vendor SDKs are not runtime deps; see
+\texttt{docs/neuromorphic/deployment-guide.md}.
+
+\textit{Dream-of-kiki consolidation (Gate Dream, partial).}
+\texttt{bridge.dream\_bridge.DreamBridge} collects $\varepsilon$ traces,
+encodes them as schema-v0 \texttt{np.int32} arrays of shape
+$[n\_\text{events}, 4]$, and applies a consolidation delta (supplied
+externally by \texttt{kiki\_oniric}) to per-edge transducers in place.
+CI uses a \texttt{MockConsolidator} returning zero-delta;
+\texttt{gate-dream-passed} is marked \emph{partial} pending the
+\texttt{kiki\_oniric} v0.5+ public \texttt{consolidate()} surface.
+
+\textit{LLM advisor for micro-kiki (Gate LLM Advisor).}
+\texttt{bridge.kiki\_nerve\_advisor.NerveWmlAdvisor} exposes
+\texttt{advise(query\_tokens, current\_route) -> dict | None}.
+It is env-gated (\texttt{NERVE\_WML\_ENABLED}) and
+checkpoint-path-gated (\texttt{NERVE\_WML\_CHECKPOINT\_PATH}). Warm-path
+latency is under 50\,ms on commodity Apple Silicon; disabled-path
+overhead is under 1\,ms. The advisor \textbf{never raises} --- every
+exception returns \texttt{None}, so the host runtime is not destabilised
+by advisor failures. A self-contained downstream-PR recipe is at
+\texttt{docs/integration/micro-kiki-wiring.md}.
+
 \section{Limitations and Future Work}
 The experiments in this draft use toy signals and small WML pools
 ($N=4$). Scaling to larger pools, LLM-backed WMLs, and hardware
@@ -231,15 +283,14 @@ priority rule suffices in simulation; a phase-locked oscillator
 regime would give the same invariant without the rule and is a
 natural next step.
 
-\textit{Adaptive alphabet.} The 64-code codebook is fixed per WML.
-\texttt{track\_p.adaptive\_codebook.AdaptiveCodebook} implements an
-\texttt{active\_mask} over a fixed 64-slot storage so shrink and grow
-become logical (not physical) operations. \texttt{bridge.transducer\_
-resize} produces a reshaped \texttt{Transducer} preserving argmax on
-kept rows. \texttt{gate-adaptive-passed} verifies a shrink-then-grow
-cycle completes without the alphabet collapsing below 4 codes. Wiring
-this into live WMLs at training time (rather than post-hoc on
-checkpoints) is future work tracked in spec \S 13 Q1.
+Wiring the adaptive-alphabet operations into live WMLs at training
+time (rather than post-hoc on checkpoints) is tracked in spec \S 13
+Q1. The neuromorphic mock runner needs a trained-LIF tightening pass
+to push the PyTorch-to-mock delta below 5\%. The dream-integration
+contract is locked at schema v0 but awaits the \texttt{kiki\_oniric}
+public API. The LLM advisor ships in advisory-only mode; a mixed-routing
+evaluation comparing advisor-on vs advisor-off on micro-kiki's live
+traffic is the next natural milestone.
 
 \bibliographystyle{plain}
 \bibliography{refs}
