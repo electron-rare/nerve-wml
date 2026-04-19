@@ -32,6 +32,7 @@ class SimNerve:
         *,
         seed:        int | None = 0,
         strict_n3:   bool = True,
+        priority_rule: bool = True,
     ) -> None:
         # Local generator — does NOT pollute global torch RNG (unlike the original
         # implementation which called torch.manual_seed(0) inside __init__).
@@ -56,6 +57,7 @@ class SimNerve:
         # in its inactive phase [0.5, 1), creating windows where one or the other is active.
         self.theta_osc.phase = 0.5
         self._strict_n3 = strict_n3
+        self._priority_rule = priority_rule
         self._queues: dict[int, list[Neuroletter]] = defaultdict(list)
         self._clock     = 0.0
 
@@ -87,8 +89,8 @@ class SimNerve:
         def is_deliverable(p: Phase) -> bool:
             if p is Phase.GAMMA:
                 return gamma_on
-            # θ messages only deliver when γ is NOT active (priority rule).
-            return theta_on and not gamma_on
+            # θ messages only deliver when γ is NOT active (if priority rule enabled).
+            return theta_on and (not self._priority_rule or not gamma_on)
 
         delivered = [letter for letter in pending if is_deliverable(letter.phase)]
         held      = [letter for letter in pending if not is_deliverable(letter.phase)]

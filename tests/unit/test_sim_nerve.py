@@ -52,3 +52,17 @@ def test_sim_nerve_routing_weight_edge_count():
         if nerve.routing_weight(i, j) == 1.0
     )
     assert active_edges == 4 * 2  # K edges per row, 4 rows
+
+
+def test_sim_nerve_priority_can_be_disabled():
+    """When priority_rule=False, θ delivers even if γ is active."""
+    nerve = SimNerve(n_wmls=4, k=2, priority_rule=False)
+    # Force both phases active.
+    nerve.gamma_osc.phase = 0.0
+    nerve.theta_osc.phase = 0.0
+    nerve.send(Neuroletter(3, Role.PREDICTION, Phase.GAMMA, 0, 1, 0.0))
+    nerve.send(Neuroletter(7, Role.ERROR,      Phase.THETA, 2, 1, 0.0))
+    delivered = nerve.listen(wml_id=1)
+    roles = {l.role for l in delivered}
+    assert Role.PREDICTION in roles
+    assert Role.ERROR in roles
