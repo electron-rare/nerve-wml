@@ -203,6 +203,26 @@ All measurements in this paper resolve to a deterministic \texttt{run\_id} via \
 
 Every numeric claim has a backing test in \texttt{tests/integration/} or \texttt{tests/unit/}. Running \texttt{uv run pytest} reproduces all gate assertions in under a minute on commodity Apple Silicon.
 
+\section{Interpretability}
+\label{sec:interp}
+
+Because each WML owns a local 64-code codebook, the learned alphabet
+is open to inspection. We build a \emph{semantics table} per WML
+(\texttt{interpret.code\_semantics.build\_semantics\_table}) that
+records, for each code $c \in \{0, \dots, 63\}$: the top-$K$ input
+summaries whose forward pass picks $c$ as the $\pi$-head argmax, the
+mean hidden-state centroid over those inputs, the softmax-derived
+next-code distribution, and the count of mapped samples. A $50$-line
+$k$-means clusterer groups the 64 centroids into 8 semantic buckets;
+a plain-HTML report (\texttt{interpret.visualise.render\_html\_report})
+renders one row per code with a cluster-coloured dot, centroid norm,
+and top-input statistics. \texttt{gate-interp-passed} verifies that
+the pipeline completes in under 60\,s, produces a cluster-entropy
+above 2 bits (non-degenerate assignments), and writes a report file
+of at least 1\,KB. The artefact is a reviewer-inspectable
+\texttt{code\,$\to$\,concept} table --- not a universal semantics, but
+a reproducible snapshot of what the trained WML treats as equivalent.
+
 \section{Limitations and Future Work}
 The experiments in this draft use toy signals and small WML pools
 ($N=4$). Scaling to larger pools, LLM-backed WMLs, and hardware
