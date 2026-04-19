@@ -578,5 +578,74 @@ def run_w2_n16(steps: int = 400) -> dict:
     }
 
 
+def run_w4_n16(steps: int = 400, rehearsal_frac: float = 0.3) -> dict:
+    """W4-N16 — rehearsal-based continual learning on a 16-WML all-MLP pool.
+
+    Train every WML on Split-MNIST-like Task 0, measure initial acc, then
+    train on Task 1 with rehearsal_frac mixed from Task 0, measure retention.
+    Forgetting ratio averaged across all 16 WMLs.
+
+    Uses all MLP pool (mlp_frac=1.0) so evaluation can cleanly use
+    emit_head_pi. LIF continual learning is left for future work.
+    """
+    from track_w.pool_factory import build_pool, k_for_n
+    import numpy as np
+
+    torch.manual_seed(0)
+    n_wmls = 16
+    nerve = MockNerve(n_wmls=n_wmls, k=k_for_n(n_wmls), seed=0)
+    nerve.set_phase_active(gamma=True, theta=False)
+    pool = build_pool(n_wmls=n_wmls, mlp_frac=1.0, seed=0)
+    split = SplitMnistLikeTask(seed=0)
+
+    opts = [torch.optim.Adam(wml.parameters(), lr=1e-2) for wml in pool]
+
+    def _train(task, n_steps):
+        for _ in range(n_steps):
+            for wml, opt in zip(pool, opts, strict=True):
+                x, y = task.sample(batch=64)
+                logits = wml.emit_head_pi(wml.core(x))[:, : 4]
+                loss = torch.nn.functional.cross_entropy(logits, y)
+                opt.zero_grad(); loss.backward(); opt.step()
+
+    def _eval(task) -> float:
+        accs = []
+        x, y = task.sample(batch=256)
+        with torch.no_grad():
+            for wml in pool:
+                pred = wml.emit_head_pi(wml.core(x))[:, : 4].argmax(-1)
+                accs.append((pred == y).float().mean().item())
+        return float(np.mean(accs))
+
+    # Task 0.
+    _train(split.subtasks[0], n_steps=steps)
+    acc0_initial = _eval(split.subtasks[0])
+
+    # Task 1 with rehearsal.
+    n_rehearsal = int(64 * rehearsal_frac)
+    n_new = 64 - n_rehearsal
+    for _ in range(steps):
+        for wml, opt in zip(pool, opts, strict=True):
+            x_new, y_new = split.subtasks[1].sample(batch=n_new)
+            x_old, y_old = split.subtasks[0].sample(batch=n_rehearsal)
+            logits_new = wml.emit_head_pi(wml.core(x_new))[:, : 4]
+            logits_old = wml.emit_head_pi(wml.core(x_old))[:, : 4]
+            loss_new = torch.nn.functional.cross_entropy(logits_new, y_new)
+            loss_old = torch.nn.functional.cross_entropy(logits_old, y_old)
+            loss = (loss_new * n_new + loss_old * n_rehearsal) / 64
+            opt.zero_grad(); loss.backward(); opt.step()
+
+    acc0_after = _eval(split.subtasks[0])
+    acc1_after = _eval(split.subtasks[1])
+
+    forgetting = (acc0_initial - acc0_after) / max(acc0_initial, 1e-6)
+    return {
+        "acc_task0_initial":     acc0_initial,
+        "acc_task0_after_task1": acc0_after,
+        "acc_task1_after_task1": acc1_after,
+        "forgetting":            forgetting,
+    }
+
+
 if __name__ == "__main__":
     print(json.dumps(run_gate_w(), indent=2))
