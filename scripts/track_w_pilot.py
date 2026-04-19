@@ -579,6 +579,94 @@ def run_w2_n16(steps: int = 400) -> dict:
     }
 
 
+def _run_w2_hard_scale(n_wmls: int, steps: int) -> dict:
+    """Shared core for W2-hard at scale (N=16, N=32).
+
+    Uses the v0.4 symmetric-head fix: LIFs read out via the learned
+    `emit_head_pi` (same as MlpWML), with full spike + surrogate
+    dynamics. RNG isolation: MLP and LIF cohorts see independent task
+    instances (per spec §W2-hard, to avoid cross-substrate RNG
+    contamination through task.sample()).
+    """
+    import numpy as np
+    import torch.nn.functional as F  # noqa: N812
+
+    from track_w._surrogate import spike_with_surrogate
+    from track_w.pool_factory import build_pool, k_for_n
+    from track_w.tasks.hard_flow_proxy import HardFlowProxyTask
+
+    torch.manual_seed(0)
+    nerve = MockNerve(n_wmls=n_wmls, k=k_for_n(n_wmls), seed=0)
+    nerve.set_phase_active(gamma=True, theta=False)
+    pool = build_pool(n_wmls=n_wmls, mlp_frac=0.5, seed=0)
+
+    # MLP cohort — fresh task instance for RNG isolation.
+    task_mlp = HardFlowProxyTask(dim=16, n_classes=12, seed=0)
+    for wml in pool:
+        if isinstance(wml, MlpWML):
+            train_wml_on_task(wml, nerve, task_mlp, steps=steps, lr=1e-2)
+
+    # LIF cohort — fresh task, full spike + learned head (v0.4 symmetry).
+    task_lif = HardFlowProxyTask(dim=16, n_classes=12, seed=0)
+    for wml in pool:
+        if isinstance(wml, LifWML):
+            input_encoder = torch.nn.Linear(16, wml.n_neurons)
+            opt = torch.optim.Adam(
+                list(wml.parameters()) + list(input_encoder.parameters()),
+                lr=1e-2,
+            )
+            for _ in range(steps):
+                x, y = task_lif.sample(batch=64)
+                i_in = wml.input_proj(input_encoder(x))
+                spikes = spike_with_surrogate(i_in, v_thr=wml.v_thr)
+                logits = wml.emit_head_pi(spikes)[:, : task_lif.n_classes]
+                loss = F.cross_entropy(logits, y)
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+            wml._input_encoder = input_encoder  # cached for eval  # noqa: SLF001
+
+    # Eval — fresh task instance, same distribution for both substrates.
+    task_eval = HardFlowProxyTask(dim=16, n_classes=12, seed=0)
+    x, y = task_eval.sample(batch=512)
+    mlp_accs, lif_accs = [], []
+    with torch.no_grad():
+        for wml in pool:
+            if isinstance(wml, MlpWML):
+                pred = wml.emit_head_pi(wml.core(x))[:, : task_eval.n_classes].argmax(-1)
+                mlp_accs.append((pred == y).float().mean().item())
+            elif isinstance(wml, LifWML):
+                i_in = wml.input_proj(wml._input_encoder(x))  # noqa: SLF001
+                spikes = spike_with_surrogate(i_in, v_thr=wml.v_thr)
+                pred = wml.emit_head_pi(spikes)[:, : task_eval.n_classes].argmax(-1)
+                lif_accs.append((pred == y).float().mean().item())
+
+    mean_mlp = float(np.mean(mlp_accs))
+    mean_lif = float(np.mean(lif_accs))
+    return {
+        "mean_acc_mlp": mean_mlp,
+        "mean_acc_lif": mean_lif,
+        "n_mlp": len(mlp_accs),
+        "n_lif": len(lif_accs),
+        "gap": abs(mean_mlp - mean_lif) / max(mean_mlp, 1e-6),
+    }
+
+
+def run_w2_hard_n16(steps: int = 400) -> dict:
+    """W2-N16 HARD — 16-WML pool on HardFlowProxyTask with v0.4 heads."""
+    return _run_w2_hard_scale(n_wmls=16, steps=steps)
+
+
+def run_w2_hard_n32(steps: int = 200) -> dict:
+    """W2-N32 HARD — 32-WML pool on HardFlowProxyTask with v0.4 heads.
+
+    Uses reduced step budget to keep runtime bounded; the polymorphism
+    question at this scale is whether the reversal (LIF ≥ MLP) observed
+    at N=2 persists, not absolute accuracy.
+    """
+    return _run_w2_hard_scale(n_wmls=32, steps=steps)
+
+
 def run_w4_n16(steps: int = 400, rehearsal_frac: float = 0.3) -> dict:
     """W4-N16 — rehearsal-based continual learning on a 16-WML all-MLP pool.
 
