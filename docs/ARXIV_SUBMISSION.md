@@ -35,7 +35,7 @@ Substrate-Agnostic Nerve Protocol for Inter-Module Communication in Hybrid Neura
 
 ```
 Clément Saillant (L'Electron Rare, Grandris, France)
-c-geni-al contributors
+hypneum-lab contributors
 ```
 
 Include ORCID if available.
@@ -66,7 +66,7 @@ CC-BY-4.0 docs — arXiv's CC-BY-4.0 is the standard for the paper PDF).
 15 pages, 2 figures. Code and reproducibility scripts archived at
 Zenodo (DOI: <fill-in-after-zenodo-mint>), linked to the parent
 dreamOfkiki programme pre-registration (OSF DOI 10.17605/OSF.IO/Q6JYN).
-Source repository: https://github.com/c-geni-al/nerve-wml (tag
+Source repository: https://github.com/hypneum-lab/nerve-wml (tag
 v1.1.4). All numeric claims reproducible via uv run pytest with
 explicit seeds.
 ```
@@ -82,7 +82,7 @@ In the arXiv "Link external resources" section, add:
 
 - `10.5281/zenodo.<code>` (nerve-wml v1.1.4 Zenodo DOI — fill after mint)
 - `10.17605/OSF.IO/Q6JYN` (dreamOfkiki OSF pre-registration)
-- `https://github.com/c-geni-al/nerve-wml` (source)
+- `https://github.com/hypneum-lab/nerve-wml` (source)
 
 ## 3. Endorsement
 
