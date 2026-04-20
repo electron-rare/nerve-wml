@@ -58,15 +58,26 @@ class GammaThetaMultiplexer(nn.Module):
         super().__init__()
         self.cfg = cfg if cfg is not None else GammaThetaConfig()
 
-        # Constellation init: IQ (2-dim) per code. Seeded generation keeps
-        # the global torch RNG untouched (MlpWML convention, see issue #1).
+        # Constellation init: true PSK on the unit circle + small randn
+        # perturbation for symmetry breaking. Min pairwise distance is
+        # 2·sin(π/alphabet_size) ≈ 0.098 for alphabet_size=64, vs ~0.01
+        # for plain randn (12% of pairs collide under PSK normalization).
+        # Seeded generation keeps the global torch RNG untouched
+        # (MlpWML convention, see issue #1).
+        angles = (
+            2.0
+            * torch.pi
+            * torch.arange(self.cfg.alphabet_size, dtype=torch.float32)
+            / self.cfg.alphabet_size
+        )
+        psk_base = torch.stack([torch.cos(angles), torch.sin(angles)], dim=-1)
         if seed is not None:
             gen = torch.Generator()
             gen.manual_seed(seed)
-            const = torch.randn(self.cfg.alphabet_size, 2, generator=gen)
+            noise = 0.01 * torch.randn(self.cfg.alphabet_size, 2, generator=gen)
         else:
-            const = torch.randn(self.cfg.alphabet_size, 2)
-        self.constellation = nn.Parameter(const)
+            noise = 0.01 * torch.randn(self.cfg.alphabet_size, 2)
+        self.constellation = nn.Parameter(psk_base + noise)
 
         # Time grid covers one effective θ period = symbols_per_theta × γ period
         # exactly. This bin-aligns γ on a rFFT bucket (no quantization leakage)
@@ -142,12 +153,21 @@ class GammaThetaMultiplexer(nn.Module):
 
         return carrier.to(torch.float32)
 
-    def demodulate(self, carrier: Tensor, *, hard: bool = True) -> Tensor:
+    def demodulate(
+        self,
+        carrier: Tensor,
+        *,
+        hard: bool = True,
+        theta_phase_offset: float = 0.0,
+    ) -> Tensor:
         """Recover code tensor from a γ/θ carrier.
 
         Args:
             carrier: [B, T] float32.
             hard: argmax when True, Gumbel-softmax when False (mirrors Transducer).
+            theta_phase_offset: must match the offset passed to `forward()`;
+                a mismatch breaks the roundtrip because the demod divides by
+                the θ envelope.
 
         Returns:
             codes: [B, K] long, K = symbols_per_theta.
@@ -167,7 +187,9 @@ class GammaThetaMultiplexer(nn.Module):
         gamma_q = torch.sin(two_pi_gamma_t)
         # Effective θ = γ / k_cap (bin-aligned, see forward).
         effective_theta_hz = self.cfg.sample_rate_hz / n_samples
-        two_pi_theta_t = 2.0 * torch.pi * effective_theta_hz * t
+        two_pi_theta_t = (
+            2.0 * torch.pi * effective_theta_hz * t + theta_phase_offset
+        )
         theta_env = 0.55 + 0.45 * torch.cos(two_pi_theta_t)
 
         # Undo θ envelope (safe: env ∈ [0.1, 1.0] never nulls).

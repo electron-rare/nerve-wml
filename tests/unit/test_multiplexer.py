@@ -100,43 +100,58 @@ def test_forward_demodulate_roundtrip_lossless_at_zero_noise():
     assert torch.equal(recovered, codes)
 
 
-def test_carrier_spectrum_dominated_by_gamma_band():
-    """Dominant rFFT peak (averaged over batch) must sit at γ.
+def test_forward_demodulate_roundtrip_with_theta_phase_offset():
+    """Roundtrip must hold for arbitrary θ phase offsets when forward and
+    demod are called with the same offset. Guards against the bug where
+    demod hard-codes offset=0 while forward honours the parameter."""
+    mux = GammaThetaMultiplexer(seed=0)
+    cfg = mux.cfg
+    codes = torch.randint(0, cfg.alphabet_size, (4, cfg.symbols_per_theta))
+    for offset in [0.0, 0.7, 1.5, -0.3]:
+        carrier = mux.forward(codes, theta_phase_offset=offset)
+        recovered = mux.demodulate(
+            carrier, hard=True, theta_phase_offset=offset
+        )
+        assert torch.equal(recovered, codes), (
+            f"roundtrip failed at theta_phase_offset={offset}"
+        )
 
-    Single-carrier spectrum can drift to symbol-rate harmonics when only 7
-    random symbols happen to align coherently. Averaging over a batch of 64
-    independent code sequences suppresses those random harmonics and isolates
-    the deterministic γ carrier at bin 7 (= exactly 40 Hz with T=175).
+
+def test_carrier_spectrum_dominated_by_gamma_band():
+    """Constant-code carrier reduces to pure γ × θ-env → peak at γ bin.
+
+    Deterministic test: with all windows carrying the same code, the phase-
+    modulation layer collapses and the carrier is exactly cos(ω_γ t - φ_0) ×
+    theta_env(t). rFFT peak must fall on bin 7 (= 40 Hz) with strict
+    tolerance < 2 Hz — bin-alignment guaranteed by the impl.
     """
     cfg = GammaThetaConfig(sample_rate_hz=1000.0)
     mux = GammaThetaMultiplexer(cfg, seed=0)
-    torch.manual_seed(0)
-    codes = torch.randint(0, cfg.alphabet_size, (64, cfg.symbols_per_theta))
-    carrier = mux.forward(codes)  # [64, n_samples]
-    spec = torch.fft.rfft(carrier, dim=-1).abs().mean(dim=0)
-    freqs = torch.fft.rfftfreq(carrier.shape[-1], d=1.0 / cfg.sample_rate_hz)
+    codes = torch.zeros((1, cfg.symbols_per_theta), dtype=torch.long)
+    carrier = mux.forward(codes)[0]
+    spec = torch.fft.rfft(carrier).abs()
+    freqs = torch.fft.rfftfreq(carrier.numel(), d=1.0 / cfg.sample_rate_hz)
     peak_hz = freqs[spec.argmax()].item()
     assert abs(peak_hz - cfg.gamma_hz) < 2.0, (
-        f"batch-averaged spectral peak at {peak_hz} Hz ≠ γ ({cfg.gamma_hz} Hz)"
+        f"spectral peak at {peak_hz} Hz ≠ γ ({cfg.gamma_hz} Hz)"
     )
 
 
 def test_phase_amplitude_coupling_detectable():
-    """γ-band power envelope must show θ-rate modulation (PAC signature).
+    """γ-band power envelope on a constant-code carrier shows θ-rate peak.
 
-    Batch-averaged to suppress single-sequence variance; PAC is a statistical
-    property of the encoder, not of one code draw.
+    Deterministic test: constant codes isolate the θ-env modulation from
+    random-symbol noise. The γ-power envelope's Fourier peak must fall in
+    [θ_hz - 1, θ_hz + 1] with a ratio > 2 against other low-freq bins.
     """
     mux = GammaThetaMultiplexer(seed=0)
     cfg = mux.cfg
-    torch.manual_seed(0)
-    codes = torch.randint(0, cfg.alphabet_size, (64, cfg.symbols_per_theta))
-    carriers = mux.forward(codes)  # [64, n_samples]
-    ratios = [_theta_envelope_ratio(carriers[i], cfg) for i in range(carriers.shape[0])]
-    mean_ratio = sum(ratios) / len(ratios)
-    assert mean_ratio > 2.0, (
-        f"mean θ-band/low-freq-other ratio on γ envelope = {mean_ratio:.2f} "
-        f"over {len(ratios)} draws — no phase-amplitude coupling detected"
+    codes = torch.zeros((1, cfg.symbols_per_theta), dtype=torch.long)
+    carrier = mux.forward(codes)[0]
+    pac_ratio = _theta_envelope_ratio(carrier, cfg)
+    assert pac_ratio > 2.0, (
+        f"θ-band/low-freq-other ratio on γ envelope = {pac_ratio:.2f} "
+        f"— no phase-amplitude coupling detected"
     )
 
 
