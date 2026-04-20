@@ -1,14 +1,18 @@
 {
   "title": "nerve-wml: Substrate-Agnostic Nerve Protocol for Inter-WML Communication",
-  "description": "A research engine validating a discrete-code communication layer between heterogeneous neural modules (World Model Languages). Eleven gates cover protocol correctness, MLP/LIF polymorphism, merge fine-tuning, resolution of scientific shortcuts, scaling to N=16/N=32 pools, neuroletter-semantics extraction, neuromorphic (Loihi/Akida) INT8 export, dream-of-kiki consolidation bridge, adaptive-alphabet shrink/grow, and a micro-kiki LLM advisor. Paper v0.3 draft included.",
+  "description": "nerve-wml defines a substrate-agnostic communication protocol between World Model Language (WML) units. Two concrete substrates (MlpWML dense MLP, LifWML surrogate-gradient leaky-integrate-and-fire SNN) share the same Nerve Protocol, enabling measured cross-substrate polymorphism (0% gap on linearly separable FlowProxyTask, 12.1% gap on HardFlowProxyTask, Gate M merge retaining 1.000 of mock-baseline accuracy). The repository provides the reference substrate-portability measurement cited in the parent research program's Paper 1 v0.2 section 7.4 (dreamOfkiki cross-substrate validation).",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "MIT",
   "creators": [
     {
       "name": "Saillant, Clément",
       "affiliation": "L'Electron Rare, Grandris, France",
-      "orcid": null
+      "orcid": ""
     },
     {
-      "name": "genial-lab contributors"
+      "name": "nerve-wml project contributors",
+      "affiliation": "genial-lab"
     }
   ],
   "keywords": [
@@ -20,28 +24,25 @@
     "leaky integrate-and-fire",
     "multi-layer perceptron",
     "cross-substrate measurement",
-    "VQ-VAE",
-    "predictive coding",
-    "neuromorphic",
-    "Loihi",
-    "Akida"
+    "continual learning",
+    "dreamOfkiki"
   ],
-  "license": "MIT",
-  "upload_type": "software",
-  "access_right": "open",
   "related_identifiers": [
     {
-      "relation": "isSupplementTo",
+      "relation": "isPartOf",
       "identifier": "10.17605/OSF.IO/Q6JYN",
-      "scheme": "doi",
-      "resource_type": "publication"
+      "resource_type": "other",
+      "scheme": "doi"
     },
     {
-      "relation": "isPartOf",
+      "relation": "isSupplementTo",
       "identifier": "https://github.com/genial-lab/dream-of-kiki",
-      "scheme": "url",
-      "resource_type": "software"
+      "resource_type": "software",
+      "scheme": "url"
     }
   ],
-  "communities": []
+  "communities": [
+    {"identifier": "open-science"}
+  ],
+  "language": "eng"
 }
