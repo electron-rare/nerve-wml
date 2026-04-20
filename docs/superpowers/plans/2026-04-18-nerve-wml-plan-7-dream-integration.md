@@ -1546,7 +1546,7 @@ Status after `gate-dream-passed`: **PARTIALLY RESOLVED**.
 - **Pending:** real `kiki_oniric.consolidate` integration requires
   dream-of-kiki v0.5+ which ships `kiki_oniric` as a proper Python
   package with the `consolidate()` entry point. Track in
-  [dream-of-kiki issue tracker](https://github.com/electron-rare/dream-of-kiki).
+  [dream-of-kiki issue tracker](https://github.com/hypneum-lab/dream-of-kiki).
 ```
 
 - [ ] **Step 2: Verify the file was created**

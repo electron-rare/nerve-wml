@@ -35,7 +35,6 @@ Substrate-Agnostic Nerve Protocol for Inter-Module Communication in Hybrid Neura
 
 ```
 Clément Saillant (L'Electron Rare, Grandris, France)
-hypneum-lab contributors
 ```
 
 Include ORCID if available.

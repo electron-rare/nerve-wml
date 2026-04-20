@@ -1,6 +1,6 @@
 # Wiring `NerveWmlAdvisor` into `micro-kiki`
 
-Self-contained recipe for the downstream PR on [micro-kiki](https://github.com/electron-rare/micro-kiki). A subagent can implement this without reading any other nerve-wml documentation.
+Self-contained recipe for the downstream PR on [micro-kiki](https://github.com/hypneum-lab/micro-kiki). A subagent can implement this without reading any other nerve-wml documentation.
 
 ## What this adds
 
