@@ -579,12 +579,17 @@ def run_w2_n16(steps: int = 400) -> dict:
     }
 
 
-def run_w_triple_substrate(steps: int = 400, hard: bool = False) -> dict:
+def run_w_triple_substrate(
+    steps: int = 400, hard: bool = False, seed: int = 0,
+) -> dict:
     """Triple-substrate polymorphism — MLP vs LIF vs Transformer.
 
     Trains one instance of each substrate on the same task (fresh task
     per cohort for RNG isolation, as in run_w2_hard) and reports
-    accuracies + 3-way gap (max − min) / max.
+    accuracies + 3-way gap (max − min) / max. v1.1 adds `seed`
+    parameter — the task seed, nerve seed, and substrate seeds all
+    derive from it deterministically (LIF gets seed+10 to match the
+    historical offset, so the v1.0 numbers are preserved when seed=0).
     """
     import torch.nn.functional as F  # noqa: N812
 
@@ -593,20 +598,22 @@ def run_w_triple_substrate(steps: int = 400, hard: bool = False) -> dict:
 
     if hard:
         from track_w.tasks.hard_flow_proxy import HardFlowProxyTask
-        make_task = lambda: HardFlowProxyTask(dim=16, n_classes=12, seed=0)  # noqa: E731
+        def make_task() -> "HardFlowProxyTask":
+            return HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
     else:
-        make_task = lambda: FlowProxyTask(dim=16, n_classes=4, seed=0)  # noqa: E731
+        def make_task() -> FlowProxyTask:
+            return FlowProxyTask(dim=16, n_classes=4, seed=seed)
 
-    torch.manual_seed(0)
-    nerve = MockNerve(n_wmls=3, k=1, seed=0)
+    torch.manual_seed(seed)
+    nerve = MockNerve(n_wmls=3, k=1, seed=seed)
     nerve.set_phase_active(gamma=True, theta=False)
 
     task_mlp = make_task()
-    mlp = MlpWML(id=0, d_hidden=16, seed=0)
+    mlp = MlpWML(id=0, d_hidden=16, seed=seed)
     train_wml_on_task(mlp, nerve, task_mlp, steps=steps, lr=1e-2)
 
     task_lif = make_task()
-    lif = LifWML(id=0, n_neurons=16, seed=10)
+    lif = LifWML(id=0, n_neurons=16, seed=seed + 10)
     input_encoder = torch.nn.Linear(16, lif.n_neurons)
     opt = torch.optim.Adam(
         list(lif.parameters()) + list(input_encoder.parameters()), lr=1e-2,
@@ -622,7 +629,7 @@ def run_w_triple_substrate(steps: int = 400, hard: bool = False) -> dict:
         opt.step()
 
     task_trf = make_task()
-    trf = TransformerWML(id=0, d_model=16, n_layers=2, n_heads=2, seed=0)
+    trf = TransformerWML(id=0, d_model=16, n_layers=2, n_heads=2, seed=seed)
     train_wml_on_task(trf, nerve, task_trf, steps=steps, lr=1e-2)
 
     task_eval = make_task()
@@ -647,14 +654,62 @@ def run_w_triple_substrate(steps: int = 400, hard: bool = False) -> dict:
     }
 
 
-def _run_w2_hard_scale(n_wmls: int, steps: int, seed: int = 0) -> dict:
-    """Shared core for W2-hard at scale (N=16, N=32).
+def run_w_triple_substrate_multiseed(
+    seeds: list[int] | None = None,
+    steps: int = 400,
+    hard: bool = True,
+) -> dict:
+    """Multi-seed triple-substrate on HardFlowProxyTask.
 
-    Uses the v0.4 symmetric-head fix: LIFs read out via the learned
-    `emit_head_pi` (same as MlpWML), with full spike + surrogate
-    dynamics. RNG isolation: MLP and LIF cohorts see independent task
-    instances (per spec §W2-hard, to avoid cross-substrate RNG
-    contamination through task.sample()).
+    Closes the symmetry gap in the v1.0 paper: MLP/LIF have 4 scaling
+    points, TRF had only N=1. This gives us multi-seed statistics for
+    the third substrate too, even though it stays at N=1 per seed.
+    """
+    import numpy as np
+
+    if seeds is None:
+        seeds = list(range(5))
+    per_seed = [
+        run_w_triple_substrate(steps=steps, hard=hard, seed=s) for s in seeds
+    ]
+    accs_mlp = [r["acc_mlp"] for r in per_seed]
+    accs_lif = [r["acc_lif"] for r in per_seed]
+    accs_trf = [r["acc_trf"] for r in per_seed]
+    triple_gaps = [r["triple_gap"] for r in per_seed]
+    return {
+        "seeds":            list(seeds),
+        "accs_mlp":         accs_mlp,
+        "accs_lif":         accs_lif,
+        "accs_trf":         accs_trf,
+        "triple_gaps":      triple_gaps,
+        "mean_acc_mlp":     float(np.mean(accs_mlp)),
+        "mean_acc_lif":     float(np.mean(accs_lif)),
+        "mean_acc_trf":     float(np.mean(accs_trf)),
+        "mean_triple_gap":  float(np.mean(triple_gaps)),
+        "median_triple_gap": float(np.median(triple_gaps)),
+        "max_triple_gap":   float(np.max(triple_gaps)),
+    }
+
+
+def _run_w2_hard_scale(
+    n_wmls: int, steps: int, seed: int = 0,
+    *, task_seed: int | None = None, pool_seed: int | None = None,
+) -> dict:
+    """Shared core for W2-hard at scale (N=16, N=32, N=64).
+
+    RNG architecture (v1.1 refactor):
+      - `seed` is the default cascade; each of pool, nerve, and task
+        gets `seed` unless explicitly overridden.
+      - `task_seed` and `pool_seed` allow decoupling task data
+        distribution from substrate initialization for ablations.
+      - Per cohort (MLP vs LIF) we still use fresh task instances
+        sharing the same `task_seed` — this preserves the cross-
+        substrate RNG isolation introduced in run_w2_hard and
+        prevents MLP.train from poisoning the LIF data stream.
+
+    v1.1 also removes the `wml._input_encoder` monkey-patching that
+    earlier versions relied on. We now keep the input_encoder in a
+    separate dict keyed by WML id, scoped to this function.
     """
     import numpy as np
     import torch.nn.functional as F  # noqa: N812
@@ -663,19 +718,26 @@ def _run_w2_hard_scale(n_wmls: int, steps: int, seed: int = 0) -> dict:
     from track_w.pool_factory import build_pool, k_for_n
     from track_w.tasks.hard_flow_proxy import HardFlowProxyTask
 
+    if task_seed is None:
+        task_seed = seed
+    if pool_seed is None:
+        pool_seed = seed
+
     torch.manual_seed(seed)
-    nerve = MockNerve(n_wmls=n_wmls, k=k_for_n(n_wmls), seed=seed)
+    nerve = MockNerve(n_wmls=n_wmls, k=k_for_n(n_wmls), seed=pool_seed)
     nerve.set_phase_active(gamma=True, theta=False)
-    pool = build_pool(n_wmls=n_wmls, mlp_frac=0.5, seed=seed)
+    pool = build_pool(n_wmls=n_wmls, mlp_frac=0.5, seed=pool_seed)
 
     # MLP cohort — fresh task instance for RNG isolation.
-    task_mlp = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+    task_mlp = HardFlowProxyTask(dim=16, n_classes=12, seed=task_seed)
     for wml in pool:
         if isinstance(wml, MlpWML):
             train_wml_on_task(wml, nerve, task_mlp, steps=steps, lr=1e-2)
 
     # LIF cohort — fresh task, full spike + learned head (v0.4 symmetry).
-    task_lif = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+    # Keep input_encoders in a local registry (no more monkey-patching).
+    lif_encoders: dict[int, torch.nn.Linear] = {}
+    task_lif = HardFlowProxyTask(dim=16, n_classes=12, seed=task_seed)
     for wml in pool:
         if isinstance(wml, LifWML):
             input_encoder = torch.nn.Linear(16, wml.n_neurons)
@@ -692,10 +754,10 @@ def _run_w2_hard_scale(n_wmls: int, steps: int, seed: int = 0) -> dict:
                 opt.zero_grad()
                 loss.backward()
                 opt.step()
-            wml._input_encoder = input_encoder  # cached for eval  # noqa: SLF001
+            lif_encoders[wml.id] = input_encoder
 
     # Eval — fresh task instance, same distribution for both substrates.
-    task_eval = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+    task_eval = HardFlowProxyTask(dim=16, n_classes=12, seed=task_seed)
     x, y = task_eval.sample(batch=512)
     mlp_accs, lif_accs = [], []
     with torch.no_grad():
@@ -704,7 +766,8 @@ def _run_w2_hard_scale(n_wmls: int, steps: int, seed: int = 0) -> dict:
                 pred = wml.emit_head_pi(wml.core(x))[:, : task_eval.n_classes].argmax(-1)
                 mlp_accs.append((pred == y).float().mean().item())
             elif isinstance(wml, LifWML):
-                i_in = wml.input_proj(wml._input_encoder(x))  # noqa: SLF001
+                enc = lif_encoders[wml.id]
+                i_in = wml.input_proj(enc(x))
                 spikes = spike_with_surrogate(i_in, v_thr=wml.v_thr)
                 pred = wml.emit_head_pi(spikes)[:, : task_eval.n_classes].argmax(-1)
                 lif_accs.append((pred == y).float().mean().item())

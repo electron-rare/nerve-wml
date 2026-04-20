@@ -17,6 +17,7 @@ contract is appropriate for saturated / linearly-separable regimes;
 on hard tasks, a ~7 % gap with stable direction is the honest
 measurement.
 """
+import pytest
 import torch
 
 from scripts.track_w_pilot import (
@@ -72,6 +73,7 @@ def test_w2_hard_n2_reversal_is_variance_not_substrate():
     )
 
 
+@pytest.mark.slow
 def test_w2_hard_n16_multiseed_distribution():
     """v0.5 honest measurement: 5-seed distribution of the N=16 hard gap.
 
@@ -102,6 +104,7 @@ def test_w2_hard_n16_multiseed_distribution():
     )
 
 
+@pytest.mark.slow
 def test_w2_hard_n32_multiseed_closes_under_5pct():
     """v0.6 scaling law: at N=32, all 5 seeds fall under the 5 % contract.
 
@@ -131,6 +134,7 @@ def test_w2_hard_n32_multiseed_closes_under_5pct():
     )
 
 
+@pytest.mark.slow
 def test_w2_hard_n64_multiseed_reaches_plateau():
     """v0.7 scaling law: at N=64, gap plateaus around ~2-3 %.
 
@@ -158,6 +162,7 @@ def test_w2_hard_n64_multiseed_reaches_plateau():
     )
 
 
+@pytest.mark.slow
 def test_w2_hard_scaling_law_is_monotonic():
     """Cross-scale monotonicity: median gap SHRINKS with N.
 

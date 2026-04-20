@@ -3,21 +3,21 @@ message: "If you use this software, please cite both this repository and the par
 title: "nerve-wml: Substrate-Agnostic Nerve Protocol for Inter-WML Communication"
 abstract: >
   nerve-wml defines a substrate-agnostic communication protocol
-  between World Model Language (WML) units. Two concrete substrates
-  (MlpWML, LifWML) share the same Nerve Protocol, enabling
-  measured cross-substrate polymorphism (0 % gap on linearly
-  separable FlowProxyTask, 12.1 % gap on HardFlowProxyTask, Gate M
-  merge retaining 1.000 of mock-baseline accuracy). The repository
-  validates eleven gates end to end: protocol correctness (Gate P),
-  MLP↔LIF polymorphism (Gate W), merge fine-tuning (Gate M),
-  resolution of four scientific shortcuts (Gate M2), scaling to
-  N=16 / N=32 pools (Gate Scale), neuroletter-semantics extraction
-  (Gate Interp), INT8 Loihi/Akida export (Gate Neuro), dream-of-kiki
-  ε-trace consolidation bridge (Gate Dream, partial), adaptive
-  alphabet shrink/grow (Gate Adaptive), and a never-raising LLM
-  advisor for micro-kiki (Gate LLM Advisor). It provides the
-  reference substrate-portability measurement cited in the parent
-  research program's Paper 1 v0.2 §7.4 (dreamOfkiki cross-substrate
+  between World Model Language (WML) units. v1.1.0 validates THREE
+  structurally distinct substrates (MlpWML stateless, LifWML spiking
+  with surrogate gradient, TransformerWML attention-based) sharing
+  the same Nerve Protocol. Empirical measurements: a four-point
+  scaling law for the polymorphism gap (median 10.71 % at N=2 →
+  6.71 % at N=16 → 2.39 % at N=32 → 2.73 % plateau at N=64; 15/15
+  direction-stable seeds); direct inter-substrate information
+  transmission with MI(codes_MLP, codes_LIF) / H = 0.91 at N=1
+  strengthening to 0.96 at N=16 pool scale; round-trip fidelity
+  MLP→LIF→MLP = 0.99; cross-substrate merge ratio = 0.97. These
+  upgrade Claim B (substrate-agnostic information transmission)
+  from architectural postulate to empirical finding. The repository
+  also validates eleven gates (P, W, M, M2, Scale, Interp, Neuro,
+  Dream-partial, Adaptive, LLM Advisor). Cited in the parent
+  research program's Paper 1 §7.4 (dreamOfkiki cross-substrate
   validation).
 type: software
 authors:
@@ -46,7 +46,8 @@ identifiers:
   - type: url
     value: "https://osf.io/v7a2j"
     description: "Parent research program OSF project"
-date-released: 2026-04-19
+date-released: 2026-04-20
+version: "1.1.0"
 preferred-citation:
   type: unpublished
   title: "dreamOfkiki: A Substrate-Agnostic Formal Framework for Dream-Based Knowledge Consolidation in Artificial Cognitive Systems"
