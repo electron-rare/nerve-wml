@@ -84,7 +84,10 @@ def main() -> None:
     ax.legend(fontsize=8, loc="lower right")
     ax.grid(True, axis="y", alpha=0.3)
 
-    fig.suptitle("Inter-substrate information transmission (Claim B empirical)", fontsize=12, y=1.02)
+    fig.suptitle(
+        "Inter-substrate information transmission (Claim B empirical)",
+        fontsize=12, y=1.02,
+    )
     fig.tight_layout()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)

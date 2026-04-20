@@ -68,7 +68,7 @@ def main() -> None:
     ax.scatter(ns, maxes, marker="x", color="#7a2c17", s=50, zorder=3, label="worst seed")
 
     # Annotate.
-    for label, n, med, *_ in points:
+    for _label, n, med, *_ in points:
         ax.annotate(
             f"{med*100:.1f}%",
             xy=(n, med),
@@ -102,7 +102,7 @@ def main() -> None:
     print()
     print("Data summary:")
     for label, n, med, p25, p75, mx in points:
-        print(f"  {label:5s} (N={n:3d}): median={med*100:5.2f}%  IQR=[{p25*100:5.2f}, {p75*100:5.2f}]  max={mx*100:5.2f}%")
+        print(f"  {label:5s} (N={n:3d}): median={med*100:5.2f}%  IQR=[{p25*100:5.2f}, {p75*100:5.2f}]  max={mx*100:5.2f}%")  # noqa: E501
 
 
 if __name__ == "__main__":

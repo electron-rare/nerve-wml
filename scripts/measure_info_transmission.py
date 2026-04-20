@@ -231,13 +231,16 @@ def run_test_2_round_trip_fidelity(seeds=None, steps=800, batch=512, transducer_
     return results
 
 
-def run_test_1_pool_scale(n_wmls: int = 16, seeds=None, steps: int = 400, batch: int = 1024) -> list:
+def run_test_1_pool_scale(  # noqa: E501
+    n_wmls: int = 16, seeds=None, steps: int = 400, batch: int = 1024,
+) -> list:
     """Pool-scale MI: compare mean MI over all cross-pair (MLP_i, LIF_j).
 
     Strengthens test (1) from a single MLP vs single LIF to the full
     N/2 x N/2 cross-pair matrix, reported per seed.
     """
     import numpy as np
+
     from track_w._surrogate import spike_with_surrogate
     from track_w.pool_factory import build_pool, k_for_n
 
@@ -382,7 +385,8 @@ def main():
     print(f"  mean MI(codes)     = {np.mean([r['mi_codes'] for r in r1]):.4f}")
     print(f"  mean MI(labels)    = {np.mean([r['mi_labels'] for r in r1]):.4f}")
     print(f"  mean MI/H(MLP)     = {np.mean([r['mi_over_h_mlp'] for r in r1]):.4f}")
-    print(f"  mean MI_mlp_truth  = {np.mean([r['mi_mlp_truth'] for r in r1]):.4f}  (upper reference: log(12)={np.log(12):.4f})")
+    mi_truth_mean = np.mean([r['mi_mlp_truth'] for r in r1])
+    print(f"  mean MI_mlp_truth  = {mi_truth_mean:.4f}  (log(12)={np.log(12):.4f})")
 
     print()
     print("=" * 70)
