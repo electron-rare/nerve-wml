@@ -117,6 +117,42 @@ def test_forward_demodulate_roundtrip_with_theta_phase_offset():
         )
 
 
+def test_soft_demodulate_returns_code_distribution():
+    """hard=False must return a [B, K, alphabet_size] soft distribution,
+    one row per symbol slot, each row summing to 1.0 (Gumbel-softmax output
+    is a proper distribution).
+    """
+    mux = GammaThetaMultiplexer(seed=0)
+    cfg = mux.cfg
+    codes = torch.randint(0, cfg.alphabet_size, (3, cfg.symbols_per_theta))
+    carrier = mux.forward(codes)
+    soft = mux.demodulate(carrier, hard=False, tau=1.0)
+    assert soft.shape == (3, cfg.symbols_per_theta, cfg.alphabet_size)
+    assert soft.dtype in (torch.float32, torch.float64)
+    row_sums = soft.sum(dim=-1)
+    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-4)
+
+
+def test_soft_demodulate_gradient_flows_through_channel():
+    """Soft demod must let a loss defined on the soft distribution backprop
+    into the constellation — this is the non-negotiable Q2 requirement for
+    bouba_sens CrossModalNerve.fuse θ-replay training.
+    """
+    mux = GammaThetaMultiplexer(seed=0)
+    cfg = mux.cfg
+    codes = torch.randint(0, cfg.alphabet_size, (2, cfg.symbols_per_theta))
+    carrier = mux.forward(codes)
+    soft = mux.demodulate(carrier, hard=False, tau=1.0)
+    # Loss on the soft distribution (cross-entropy-like surrogate)
+    soft.mean().backward()
+    g = mux.constellation.grad
+    assert g is not None
+    assert g.abs().sum().item() > 0.0, (
+        "constellation received no gradient via soft demod — "
+        "backprop through channel is broken"
+    )
+
+
 def test_carrier_spectrum_dominated_by_gamma_band():
     """Constant-code carrier reduces to pure γ × θ-env → peak at γ bin.
 
