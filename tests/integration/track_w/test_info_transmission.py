@@ -10,13 +10,16 @@ go further and probe whether they TRANSMIT information coherently:
   (3) Cross-substrate merge retains > 90 % of MLP accuracy when LIF's
       sole input is MLP-emitted codes through a learned transducer.
 """
+import pytest
 import torch
 
 from scripts.measure_info_transmission import (
     run_test_1_mutual_information,
     run_test_1_pool_scale,
+    run_test_2_pool_scale,
     run_test_2_round_trip_fidelity,
     run_test_3_cross_substrate_merge,
+    run_test_3_pool_scale,
 )
 
 
@@ -62,6 +65,7 @@ def test_round_trip_fidelity_preserves_accuracy():
     )
 
 
+@pytest.mark.slow
 def test_mi_at_pool_scale_strengthens():
     """Pool-scale MI (N=16) should preserve or exceed the N=1 ratio.
 
@@ -110,4 +114,38 @@ def test_cross_substrate_merge_approaches_mlp_accuracy():
         assert r["acc_cross_merge"] > 1 / 12 + 0.10, (
             f"seed={r['seed']}: cross-merge accuracy "
             f"{r['acc_cross_merge']:.3f} barely above random (1/12=0.083)"
+        )
+
+
+@pytest.mark.slow
+def test_round_trip_pool_scale_holds():
+    """Pool-scale (2): round-trip fidelity averaged over all MLP-LIF
+    cross-pairs in an N=16 pool. Pins Claim B at scale, not just
+    for a single (mlp_0, lif_0) pair."""
+    results = run_test_2_pool_scale(
+        n_wmls=16, seeds=list(range(2)), steps=400, transducer_steps=150
+    )
+    for r in results:
+        assert r["n_pairs"] == 64  # 8 x 8 cross-pairs
+        assert r["mean_ratio"] > 0.80, (
+            f"seed={r['seed']}: mean pool-scale fidelity {r['mean_ratio']:.3f} < 80 %"
+        )
+        assert r["min_ratio"] > 0.60, (
+            f"seed={r['seed']}: min pair {r['min_ratio']:.3f} — "
+            "some pair collapsed"
+        )
+
+
+@pytest.mark.slow
+def test_cross_merge_pool_scale_holds():
+    """Pool-scale (3): cross-substrate merge averaged over all MLP-LIF
+    cross-pairs. Every LIF can recover every MLP's task competence."""
+    results = run_test_3_pool_scale(
+        n_wmls=16, seeds=list(range(2)), steps=400, merge_steps=150
+    )
+    for r in results:
+        assert r["n_pairs"] == 64
+        assert r["mean_ratio"] > 0.80, (
+            f"seed={r['seed']}: mean pool-scale merge ratio "
+            f"{r['mean_ratio']:.3f} < 80 %"
         )

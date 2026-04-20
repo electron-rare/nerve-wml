@@ -154,10 +154,18 @@ def run_test_1_mutual_information(seeds=None, steps=800, batch=2048):
 def run_test_2_round_trip_fidelity(seeds=None, steps=800, batch=512, transducer_steps=200):
     """Test (2) — fraction of label information surviving a round-trip pass.
 
-    Round-trip: x → MLP → transducer(M→L, 64→64) → LIF.emit → transducer(L→M)
-      → final readout against ground-truth labels.
+    Round-trip pipeline (v1.1, clean transducers):
+      x → MLP.emit_codes       [B, alphabet=64]
+        → T_ML : 64 → n_neurons (LIF feature space)
+        → LIF.emit_head_pi      [B, alphabet=64]
+        → T_LM : 64 → alphabet  (back to MLP code space)
+        → argmax over n_classes
 
-    Transducers are trained with task supervision on a held-out split.
+    Both transducers are INDEPENDENT learned Linears with their own
+    parameters — no weight-sharing with the substrates' emit heads.
+    Substrates are frozen. What we measure: how much task-relevant
+    information survives two learned linear projections and a pass
+    through the LIF's frozen readout.
     """
     if seeds is None:
         seeds = list(range(3))
@@ -165,8 +173,9 @@ def run_test_2_round_trip_fidelity(seeds=None, steps=800, batch=512, transducer_
     for seed in seeds:
         mlp, lif, input_encoder = _train_pair(seed, steps=steps)
         alphabet_size = mlp.emit_head_pi.out_features
+        n_neurons = lif.n_neurons
         torch.manual_seed(seed + 100)
-        transducer_ml = torch.nn.Linear(alphabet_size, alphabet_size)
+        transducer_ml = torch.nn.Linear(alphabet_size, n_neurons)
         transducer_lm = torch.nn.Linear(alphabet_size, alphabet_size)
         opt = torch.optim.Adam(
             list(transducer_ml.parameters()) + list(transducer_lm.parameters()),
@@ -174,49 +183,32 @@ def run_test_2_round_trip_fidelity(seeds=None, steps=800, batch=512, transducer_
         )
         task = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
 
-        # Freeze everything except the transducers.
+        # Freeze everything except the two transducers.
         for p in list(mlp.parameters()) + list(lif.parameters()) + list(
             input_encoder.parameters()
         ):
             p.requires_grad_(False)
 
-        # Train the MLP→LIF→MLP round-trip to reproduce ground-truth labels.
         for _ in range(transducer_steps):
             x, y = task.sample(batch=64)
-            pi_mlp = mlp.emit_head_pi(mlp.core(x))         # [B, alphabet]
-            pi_mlp_at_lif = transducer_ml(pi_mlp)          # [B, alphabet]
-            # LIF receives the transduced logits — decode via its readout.
-            # We inject the transduced logits as fake "emitted code logits"
-            # the LIF must interpret. Since LIF's emit head is already
-            # trained, we treat pi_mlp_at_lif as the substitute for LIF's
-            # pre-readout features via a simple linear adapter.
-            # (Round-trip is inherently lossy here because we project 64→64
-            # instead of going through spike dynamics; what we measure is
-            # whether code-level information SURVIVES two linear transducer
-            # steps.)
-            pi_lif_out = lif.emit_head_pi(
-                pi_mlp_at_lif @ lif.emit_head_pi.weight
-            )                                              # [B, alphabet]
-            pi_back_at_mlp = transducer_lm(pi_lif_out)     # [B, alphabet]
+            pi_mlp = mlp.emit_head_pi(mlp.core(x))               # [B, alphabet]
+            lif_features = transducer_ml(pi_mlp)                 # [B, n_neurons]
+            pi_lif_out = lif.emit_head_pi(lif_features)          # [B, alphabet]
+            pi_back_at_mlp = transducer_lm(pi_lif_out)           # [B, alphabet]
             logits = pi_back_at_mlp[:, : task.n_classes]
             loss = F.cross_entropy(logits, y)
             opt.zero_grad()
             loss.backward()
             opt.step()
 
-        # Eval on a fresh batch.
         x, y = task.sample(batch=batch)
         with torch.no_grad():
             pi_mlp = mlp.emit_head_pi(mlp.core(x))
-            pi_mlp_at_lif = transducer_ml(pi_mlp)
-            pi_lif_out = lif.emit_head_pi(
-                pi_mlp_at_lif @ lif.emit_head_pi.weight
-            )
+            lif_features = transducer_ml(pi_mlp)
+            pi_lif_out = lif.emit_head_pi(lif_features)
             pi_back_at_mlp = transducer_lm(pi_lif_out)
             pred_roundtrip = pi_back_at_mlp[:, : task.n_classes].argmax(-1)
             acc_roundtrip = (pred_roundtrip == y).float().mean().item()
-
-            # Baseline: MLP alone (no round-trip).
             pred_direct = mlp.emit_head_pi(mlp.core(x))[
                 :, : task.n_classes
             ].argmax(-1)
@@ -307,6 +299,159 @@ def run_test_1_pool_scale(  # noqa: E501
             "min_mi":        float(np.min(mi_pairs)),
             "h_mlp":         h_mlp,
             "mean_mi_over_h": mean_mi / max(h_mlp, 1e-9),
+        })
+    return results
+
+
+def _train_pool(seed: int, n_wmls: int, steps: int):
+    """Train a balanced pool at scale. Returns (pool, lif_encoders)."""
+    from track_w.pool_factory import build_pool, k_for_n
+
+    torch.manual_seed(seed)
+    nerve = MockNerve(n_wmls=n_wmls, k=k_for_n(n_wmls), seed=seed)
+    nerve.set_phase_active(gamma=True, theta=False)
+    pool = build_pool(n_wmls=n_wmls, mlp_frac=0.5, seed=seed)
+
+    task_mlp = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+    for w in pool:
+        if isinstance(w, MlpWML):
+            train_wml_on_task(w, nerve, task_mlp, steps=steps, lr=1e-2)
+
+    lif_encoders: dict[int, torch.nn.Linear] = {}
+    task_lif = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+    for w in pool:
+        if isinstance(w, LifWML):
+            enc = torch.nn.Linear(16, w.n_neurons)
+            opt = torch.optim.Adam(
+                list(w.parameters()) + list(enc.parameters()), lr=1e-2,
+            )
+            for _ in range(steps):
+                x, y = task_lif.sample(batch=64)
+                i_in = w.input_proj(enc(x))
+                spikes = spike_with_surrogate(i_in, v_thr=w.v_thr)
+                logits = w.emit_head_pi(spikes)[:, : task_lif.n_classes]
+                loss = F.cross_entropy(logits, y)
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+            lif_encoders[w.id] = enc
+    return pool, lif_encoders, nerve
+
+
+def run_test_2_pool_scale(n_wmls=16, seeds=None, steps=400, batch=512, transducer_steps=150):
+    """Pool-scale round-trip — averaged over all MLP-LIF cross-pairs.
+
+    For each (mlp_i, lif_j) pair in the pool, train independent
+    transducers and measure the round-trip fidelity ratio. Reports
+    per-seed mean/median/max across the N/2 x N/2 matrix.
+    """
+    import numpy as np
+
+    if seeds is None:
+        seeds = list(range(3))
+    results = []
+    for seed in seeds:
+        pool, lif_encoders, _ = _train_pool(seed, n_wmls, steps)
+        mlps = [w for w in pool if isinstance(w, MlpWML)]
+        lifs = [w for w in pool if isinstance(w, LifWML)]
+        task = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+        alphabet_size = mlps[0].emit_head_pi.out_features
+
+        # Freeze all substrates.
+        for w in pool:
+            for p in w.parameters():
+                p.requires_grad_(False)
+
+        pair_ratios = []
+        for mlp in mlps:
+            for lif in lifs:
+                torch.manual_seed(seed * 100 + mlp.id * 10 + lif.id)
+                t_ml = torch.nn.Linear(alphabet_size, lif.n_neurons)
+                t_lm = torch.nn.Linear(alphabet_size, alphabet_size)
+                opt = torch.optim.Adam(
+                    list(t_ml.parameters()) + list(t_lm.parameters()), lr=1e-2,
+                )
+                for _ in range(transducer_steps):
+                    x, y = task.sample(batch=64)
+                    pi_m = mlp.emit_head_pi(mlp.core(x))
+                    feat = t_ml(pi_m)
+                    pi_l = lif.emit_head_pi(feat)
+                    pi_back = t_lm(pi_l)
+                    loss = F.cross_entropy(pi_back[:, : task.n_classes], y)
+                    opt.zero_grad()
+                    loss.backward()
+                    opt.step()
+                with torch.no_grad():
+                    x, y = task.sample(batch=batch)
+                    pi_m = mlp.emit_head_pi(mlp.core(x))
+                    feat = t_ml(pi_m)
+                    pi_l = lif.emit_head_pi(feat)
+                    pi_back = t_lm(pi_l)
+                    acc_rt = (pi_back[:, : task.n_classes].argmax(-1) == y).float().mean().item()
+                    pi_mlp_direct = mlp.emit_head_pi(mlp.core(x))[:, : task.n_classes].argmax(-1)
+                    acc_direct = (pi_mlp_direct == y).float().mean().item()
+                    pair_ratios.append(acc_rt / max(acc_direct, 1e-6))
+        results.append({
+            "seed":           seed,
+            "n_pairs":        len(pair_ratios),
+            "mean_ratio":     float(np.mean(pair_ratios)),
+            "median_ratio":   float(np.median(pair_ratios)),
+            "min_ratio":      float(np.min(pair_ratios)),
+            "max_ratio":      float(np.max(pair_ratios)),
+        })
+    return results
+
+
+def run_test_3_pool_scale(n_wmls=16, seeds=None, steps=400, batch=512, merge_steps=200):
+    """Pool-scale cross-merge — for each (mlp_i, lif_j) pair, train a
+    transducer so lif_j recovers mlp_i's task competence from its
+    codes alone."""
+    import numpy as np
+
+    if seeds is None:
+        seeds = list(range(3))
+    results = []
+    for seed in seeds:
+        pool, _, _ = _train_pool(seed, n_wmls, steps)
+        mlps = [w for w in pool if isinstance(w, MlpWML)]
+        lifs = [w for w in pool if isinstance(w, LifWML)]
+        task = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+        alphabet_size = mlps[0].emit_head_pi.out_features
+
+        for w in pool:
+            for p in w.parameters():
+                p.requires_grad_(False)
+
+        pair_ratios = []
+        for mlp in mlps:
+            for lif in lifs:
+                torch.manual_seed(seed * 100 + mlp.id * 10 + lif.id + 50)
+                t = torch.nn.Linear(alphabet_size, lif.n_neurons)
+                opt = torch.optim.Adam(t.parameters(), lr=1e-2)
+                for _ in range(merge_steps):
+                    x, y = task.sample(batch=64)
+                    with torch.no_grad():
+                        pi_m = mlp.emit_head_pi(mlp.core(x))
+                    feat = t(pi_m)
+                    logits = lif.emit_head_pi(feat)[:, : task.n_classes]
+                    loss = F.cross_entropy(logits, y)
+                    opt.zero_grad()
+                    loss.backward()
+                    opt.step()
+                with torch.no_grad():
+                    x, y = task.sample(batch=batch)
+                    pi_m = mlp.emit_head_pi(mlp.core(x))
+                    feat = t(pi_m)
+                    acc_m = (lif.emit_head_pi(feat)[:, : task.n_classes].argmax(-1) == y).float().mean().item()
+                    acc_ref = (mlp.emit_head_pi(mlp.core(x))[:, : task.n_classes].argmax(-1) == y).float().mean().item()
+                    pair_ratios.append(acc_m / max(acc_ref, 1e-6))
+        results.append({
+            "seed":         seed,
+            "n_pairs":      len(pair_ratios),
+            "mean_ratio":   float(np.mean(pair_ratios)),
+            "median_ratio": float(np.median(pair_ratios)),
+            "min_ratio":    float(np.min(pair_ratios)),
+            "max_ratio":    float(np.max(pair_ratios)),
         })
     return results
 
