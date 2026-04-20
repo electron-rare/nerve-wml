@@ -14,6 +14,7 @@ from typing import Literal
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F  # noqa: N812
 
 from nerve_core.protocols import Nerve
 
@@ -166,24 +167,28 @@ class GammaThetaMultiplexer(nn.Module):
         carrier: Tensor,
         *,
         hard: bool = True,
+        tau: float = 1.0,
         theta_phase_offset: float = 0.0,
     ) -> Tensor:
         """Recover code tensor from a γ/θ carrier.
 
         Args:
             carrier: [B, T] float32.
-            hard: argmax when True, Gumbel-softmax when False (mirrors Transducer).
+            hard: argmax when True (eval), Gumbel-softmax distribution when
+                False (training, mirrors Transducer convention).
+            tau: Gumbel-softmax temperature (anneal downward during training).
+                Ignored when hard=True.
             theta_phase_offset: must match the offset passed to `forward()`;
                 a mismatch breaks the roundtrip because the demod divides by
                 the θ envelope.
 
         Returns:
-            codes: [B, K] long, K = symbols_per_theta.
+            - hard=True : [B, K] long, K = symbols_per_theta.
+            - hard=False : [B, K, alphabet_size] float — soft distribution
+                over codes per symbol slot. Enables gradient flow from
+                downstream loss back through the channel into the constellation
+                (bouba_sens CrossModalNerve.fuse θ-replay path).
         """
-        if not hard:
-            raise NotImplementedError(
-                "soft demodulation (hard=False) pending — Q2 arbitration in issue #1"
-            )
         batch, n_samples = carrier.shape
         t = self._t_grid
         k_cap = self.cfg.symbols_per_theta
@@ -230,11 +235,21 @@ class GammaThetaMultiplexer(nn.Module):
         ).solution  # [2*k_cap, batch]
         recovered = sol.T.reshape(batch, k_cap, 2).to(torch.float32)
 
-        # Forward normalized symbols to unit norm (PSK). Compare recovered
-        # (i, q) against unit-normalized constellation.
+        # Unit-normalize constellation to match forward-time PSK normalization.
         const_norm = self.constellation / self.constellation.norm(
             dim=-1, keepdim=True
         ).clamp(min=1e-8)
-        dist = torch.cdist(recovered.reshape(-1, 2), const_norm)
-        codes = dist.argmin(dim=-1).reshape(batch, k_cap)
-        return codes
+
+        # Negative squared distance = similarity logit (higher = closer).
+        # Using squared distance keeps the gradient path smooth for soft mode.
+        dist_sq = (
+            (recovered.reshape(-1, 1, 2) - const_norm.unsqueeze(0)).pow(2).sum(dim=-1)
+        )  # [batch*k_cap, alphabet_size]
+        logits = (-dist_sq).reshape(batch, k_cap, -1)  # [batch, k_cap, alphabet]
+
+        if hard:
+            return logits.argmax(dim=-1)  # [batch, k_cap] long
+
+        # Soft Gumbel-softmax distribution for differentiable backprop
+        # through the channel (bouba_sens θ-replay loss path).
+        return F.gumbel_softmax(logits, tau=tau, hard=False)
