@@ -14,6 +14,7 @@ import pytest
 import torch
 
 from scripts.measure_info_transmission import (
+    run_test_1_mi_on_moons,
     run_test_1_mutual_information,
     run_test_1_pool_scale,
     run_test_2_pool_scale,
@@ -115,6 +116,25 @@ def test_cross_substrate_merge_approaches_mlp_accuracy():
             f"seed={r['seed']}: cross-merge accuracy "
             f"{r['acc_cross_merge']:.3f} barely above random (1/12=0.083)"
         )
+
+
+def test_mi_generalizes_to_moons_task():
+    """Multi-distribution Claim B: MI ratio holds on MoonsTask too.
+
+    HardFlowProxyTask is a 12-class XOR-on-noise task. MoonsTask is a
+    2-class interleaved-semicircle task — structurally different
+    decision boundary. If Claim B is robust, MI/H should stay
+    substantially above the 50 % threshold. Empirical: ~0.74 (lower
+    than 0.91 on HardFlowProxyTask because H is bounded by log(2),
+    but the RATIO of shared information is preserved).
+    """
+    results = run_test_1_mi_on_moons(seeds=list(range(3)), steps=400, batch=2048)
+    ratios = [r["mi_over_h"] for r in results]
+    mean_ratio = sum(ratios) / len(ratios)
+    assert mean_ratio > 0.50, (
+        f"MI/H on MoonsTask = {mean_ratio:.3f} < 50 %; "
+        "Claim B fails to generalize beyond HardFlowProxyTask"
+    )
 
 
 @pytest.mark.slow

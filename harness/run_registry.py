@@ -31,3 +31,24 @@ def compute_run_id(
     ])
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     return digest[:16]
+
+
+def run_id_for_pilot(
+    *,
+    pilot_name: str,
+    seed:       int,
+    commit_sha: str = "local",
+) -> str:
+    """Convenience wrapper for v1.1 pilots that don't expose an explicit
+    topology (e.g., run_w2_hard_n16_multiseed, run_triple_pool_hard, the
+    info-transmission pilots). The pilot name acts as the c_version.
+
+    Use only when the true topology is internal to the pilot — prefer
+    compute_run_id with an explicit topology when available.
+    """
+    return compute_run_id(
+        c_version=pilot_name,
+        topology=(),  # pilot-internal topology
+        seed=seed,
+        commit_sha=commit_sha,
+    )

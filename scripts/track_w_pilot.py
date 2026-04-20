@@ -1001,6 +1001,17 @@ def run_w2_hard_n32_multiseed(
     }
 
 
+def _bulk_run_id(pilot_name: str, seeds: list[int]) -> str:
+    """Produce a stable run_id for a multi-seed bulk run.
+
+    Uses the first seed as payload; callers can inspect per-seed run_ids
+    via compute_run_id if they need finer granularity.
+    """
+    from harness.run_registry import run_id_for_pilot
+    first = seeds[0] if seeds else 0
+    return run_id_for_pilot(pilot_name=pilot_name, seed=first)
+
+
 def run_w2_hard_n16_multiseed(
     seeds: list[int] | None = None,
     steps: int = 400,
@@ -1032,6 +1043,7 @@ def run_w2_hard_n16_multiseed(
     accs_mlp = [r["mean_acc_mlp"] for r in per_seed]
     accs_lif = [r["mean_acc_lif"] for r in per_seed]
     return {
+        "run_id":         _bulk_run_id("run_w2_hard_n16_multiseed", seeds),
         "seeds":          list(seeds),
         "gaps":           gaps,
         "accs_mlp":       accs_mlp,

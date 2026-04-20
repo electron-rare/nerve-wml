@@ -223,6 +223,65 @@ def run_test_2_round_trip_fidelity(seeds=None, steps=800, batch=512, transducer_
     return results
 
 
+def run_test_1_mi_on_moons(seeds=None, steps: int = 400, batch: int = 2048):
+    """Multi-distribution Claim B validation on MoonsTask (2-class).
+
+    Closes §13.1 debt #14 (single-distribution generalization risk).
+    Measures MI(codes_MLP, codes_LIF) / H(codes_MLP) on a structurally
+    different non-linear task (two-moons) to verify Claim B is not a
+    HardFlowProxyTask-specific artefact.
+    """
+    import numpy as np
+    from track_w.tasks.moons import MoonsTask
+
+    if seeds is None:
+        seeds = list(range(3))
+    results = []
+    for seed in seeds:
+        torch.manual_seed(seed)
+        nerve = MockNerve(n_wmls=2, k=1, seed=seed)
+        nerve.set_phase_active(gamma=True, theta=False)
+
+        task_mlp = MoonsTask(dim=16, n_classes=2, seed=seed)
+        mlp = MlpWML(id=0, d_hidden=16, seed=seed)
+        train_wml_on_task(mlp, nerve, task_mlp, steps=steps, lr=1e-2)
+
+        task_lif = MoonsTask(dim=16, n_classes=2, seed=seed)
+        lif = LifWML(id=0, n_neurons=16, seed=seed + 10)
+        enc = torch.nn.Linear(16, lif.n_neurons)
+        opt = torch.optim.Adam(
+            list(lif.parameters()) + list(enc.parameters()), lr=1e-2,
+        )
+        for _ in range(steps):
+            x, y = task_lif.sample(batch=64)
+            i_in = lif.input_proj(enc(x))
+            spikes = spike_with_surrogate(i_in, v_thr=lif.v_thr)
+            logits = lif.emit_head_pi(spikes)[:, : task_lif.n_classes]
+            loss = F.cross_entropy(logits, y)
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+
+        task_eval = MoonsTask(dim=16, n_classes=2, seed=seed)
+        x, _ = task_eval.sample(batch=batch)
+        with torch.no_grad():
+            codes_mlp = mlp.emit_head_pi(mlp.core(x)).argmax(-1).numpy()
+            i_in = lif.input_proj(enc(x))
+            spikes = spike_with_surrogate(i_in, v_thr=lif.v_thr)
+            codes_lif = lif.emit_head_pi(spikes).argmax(-1).numpy()
+
+        mi = mutual_info_score(codes_mlp, codes_lif)
+        _, c = np.unique(codes_mlp, return_counts=True)
+        h_mlp = float(-(c / c.sum() * np.log(c / c.sum())).sum())
+        results.append({
+            "seed":           seed,
+            "mi":             float(mi),
+            "h_mlp":          h_mlp,
+            "mi_over_h":      float(mi / max(h_mlp, 1e-9)),
+        })
+    return results
+
+
 def run_test_1_pool_scale(  # noqa: E501
     n_wmls: int = 16, seeds=None, steps: int = 400, batch: int = 1024,
 ) -> list:
