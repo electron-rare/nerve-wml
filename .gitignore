@@ -20,3 +20,6 @@ papers/paper1/*.log
 papers/paper1/*.out
 .serena/
 reports/
+
+# LaTeX root-level artefacts
+/texput.log
