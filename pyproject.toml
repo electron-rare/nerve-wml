@@ -21,7 +21,7 @@ dev = [
   "mypy>=1.10",
 ]
 axioms = [
-    "dreamofkiki @ git+https://github.com/hypneum-lab/dream-of-kiki@v0.9.0",
+    "dreamofkiki @ git+https://github.com/hypneum-lab/dream-of-kiki@v0.9.1",
 ]
 mnist = [
     "torchvision>=0.17.0",
@@ -33,6 +33,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["nerve_core", "track_p", "track_w", "bridge", "harness", "interpret", "neuromorphic", "nerve_wml"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -19,11 +19,11 @@ def test_axioms_extras_group_exists():
     assert "axioms" in extras
 
 
-def test_axioms_extras_references_dreamofkiki_v0_9_0():
+def test_axioms_extras_references_dreamofkiki_v0_9_1():
     extras = _load_pyproject()["project"]["optional-dependencies"]
     axioms = extras["axioms"]
     assert len(axioms) == 1
     spec = axioms[0]
     assert "dreamofkiki" in spec
     assert "hypneum-lab/dream-of-kiki" in spec
-    assert "v0.9.0" in spec
+    assert "v0.9.1" in spec
