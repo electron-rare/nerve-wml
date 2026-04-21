@@ -2,6 +2,45 @@
 
 All notable changes to `nerve-wml` follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] — 2026-04-21
+
+Broadens Claim A/B from synthetic benchmarks + MNIST to a
+canonical real neural recording: Sleep-EDF Expanded EEG,
+5-class sleep-stage classification via the v1.5.0
+`MlpWML.from_spectrogram` factory. No API change, no regression
+on v1.2.3 baseline.
+
+### Added
+
+- Paper Test (9) "Real neural data (Sleep-EDF)" in section
+  Information Transmission. Cross-domain MI/H(a) table across
+  HardFlowProxyTask / MoonsTask / MNIST / Sleep-EDF / DVNC.
+- `scripts/eeg_preprocess_sleep_edf.py` full wiring
+  (bandpass + resample + segment + per-subject split).
+- `scripts/save_codes_eeg.py` with `--spectrogram` and
+  `--d-hidden` flags; default now lr=1e-3 steps=2000 with
+  class-balanced sampling + inverse-frequency weighted CE.
+- `docs/research-notes/sleep-edf-pipeline-protocol.md`
+  already present from v1.5.x cycle; now reflects the
+  delivered configuration.
+
+### Reproducibility
+
+- `tests/golden/codes_mlp_lif_eeg_n10.npz` (12.9 MB,
+  10 subjects, 3 seeds, 128-dim spectrogram embeddings).
+- `papers/paper1/figures/mi_eeg_n10.json` (plug-in 0.66,
+  Miller-Madow 0.66, KSG 1.94 nats, MINE 3.83 nats,
+  null-model z 1263-1351, bootstrap CI95 [0.63, 0.70]).
+- MLP acc 0.76, LIF acc 0.80, pairwise gap 0.036.
+
+### Dependencies
+
+- `mne>=1.12.1` added (transitive: pooch, requests, tqdm);
+  required by the Sleep-EDF fetch and preprocessing path.
+
+See [`docs/changelog/v1.6.0.md`](docs/changelog/v1.6.0.md) for
+the full scientific rationale.
+
 ## [1.5.3] — 2026-04-21
 
 Methodology release honouring the v1.5.2 cross-lab methodology
