@@ -8,18 +8,18 @@
 
 ## Why this baseline
 
-Tang et al.\ 2021 "Discrete-Valued Neural Communication" (NeurIPS,
+Liu et al.\ 2021 "Discrete-Valued Neural Communication" (NeurIPS,
 arXiv:2107.02367) is the closest prior work to nerve-wml's VQ-
 bottleneck inter-module communication: two agents communicate
 through a shared discrete codebook, with commitment-loss training
 on the codebook vectors. Without a direct numerical comparison,
 any reviewer familiar with DVNC will ask: **"how does this compare
-to Tang 2021?"** and the paper's position becomes weaker than it
+to Liu 2021?"** and the paper's position becomes weaker than it
 needs to be.
 
 ## What we compare
 
-| Dimension | nerve-wml | DVNC (Tang 2021) |
+| Dimension | nerve-wml | DVNC (Liu 2021) |
 |---|---|---|
 | Substrates | 2 **heterogeneous** (MLP + LIF spiking) | 2 **homogeneous** (GRU+GRU or MLP+MLP) |
 | Task regime | Supervised | Cooperative RL |

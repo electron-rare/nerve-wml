@@ -1,38 +1,31 @@
-"""DVNC baseline on HardFlowProxyTask (scaffold, wiring TODO).
+"""DVNC baseline on HardFlowProxyTask.
 
-Adapts Tang et al. 2021 "Discrete-Valued Neural Communication"
-(NeurIPS, arXiv:2107.02367) from its original cooperative-RL
-regime to the supervised classification setup used by
-scripts/save_codes_for_checks.py, so that the resulting emitted
-codes can be fed into the same nerve_wml.methodology.* measurement
-pipeline (null-model, bootstrap CI, multi-estimator).
+Re-implements the core VQ-bottleneck mechanism of DVNC
+(Liu et al. 2021, "Discrete-Valued Neural Communication",
+NeurIPS 2021, arXiv:2107.02367) in a supervised regime matching
+run_w2_hard (scripts/track_w_pilot.py:429).
 
-*** SCAFFOLD -- wiring is not yet in place. ***
+Why a re-implementation rather than vendoring:
+  * The reference repo
+    (github.com/kaiyuanmifen/Discrete-Valued-Neural-Communication)
+    ships without a LICENSE file, so we cannot legally copy their
+    Quantization.py into this MIT repo.
+  * DVNC's core is VQ-VAE (van den Oord et al. 2017) with a
+    codebook shared between two agents; this is a well-known
+    ~50-line recipe that we re-derive from the public algorithm
+    without touching their sources.
+  * Keeps the comparison fair: same codebook size (64), same
+    d_hidden (16), same task (HardFlowProxyTask, 12-class XOR),
+    same seeds and hyperparameters as scripts/save_codes_for_checks.py,
+    the only structural difference being (a) a shared codebook
+    (DVNC) vs per-WML codebook + transducers (nerve-wml) and
+    (b) two homogeneous MLP agents (DVNC) vs heterogeneous
+    MLP+LIF (nerve-wml).
 
-Before this script runs, complete Day 1 of the protocol in
-docs/research-notes/dvnc-baseline-protocol.md:
-
-  1. Clone DVNC reference implementation to a sibling directory:
-       ssh kxkm@kxkm-ai
-       cd ~ && git clone <DVNC_REPO_URL> dvnc-reference
-  2. Identify the VectorQuantizer / VQBottleneck module in their
-     source tree. Either:
-       (a) copy that module into third_party/dvnc/ in nerve-wml, or
-       (b) pip install -e ../dvnc-reference and import directly.
-  3. Uncomment the TODO-marked imports and the
-     _build_vq_bottleneck() body below, matching their API.
-
-Then run:
-
+Usage:
     uv run python scripts/baseline_dvnc.py \\
         --seeds 0 1 2 --n-eval 5000 --steps 800 \\
         --out tests/golden/codes_dvnc.npz
-
-Hyperparameters (lr, batch, steps, d_hidden, codebook_size) MUST
-match scripts/save_codes_for_checks.py for the comparison to be
-meaningful. Argparse defaults already mirror run_w2_hard; do not
-change them without updating the comparison methodology in
-docs/research-notes/dvnc-baseline-protocol.md.
 """
 from __future__ import annotations
 
@@ -46,52 +39,74 @@ import torch.nn.functional as F
 
 from track_w.tasks.hard_flow_proxy import HardFlowProxyTask
 
-# TODO Day 1 PM: uncomment one of the following after cloning DVNC:
-#
-# Option A (vendored copy in nerve-wml):
-#   from third_party.dvnc.vq_bottleneck import VectorQuantizer
-#
-# Option B (install DVNC as editable dep):
-#   from dvnc.vq_bottleneck import VectorQuantizer
-#
-# Option C (minimal re-implementation if DVNC repo is obsolete):
-#   see _MinimalSharedVectorQuantizer class stub below.
 
+class _SharedVectorQuantizer(nn.Module):
+    """Minimal VQ-VAE bottleneck with shared codebook.
 
-class _MinimalSharedVectorQuantizer(nn.Module):
-    """Placeholder VQ module for Option C (reimplementation).
+    Faithful re-implementation of the VQ-VAE quantisation step
+    (van den Oord et al. 2017, arXiv:1711.00937) -- the basis of
+    DVNC's Quantization.Quantize class. A single shared codebook
+    is quantised independently for each agent's encoding (the core
+    DVNC principle: shared discrete communication channel).
 
-    Shared codebook between two agents, commitment-loss trained
-    (VQ-VAE style). Quantises each agent's continuous encoding to
-    the nearest codebook vector via Euclidean distance, returns
-    the index + the straight-through quantized vector.
-
-    *** STUB: Day 2 AM wiring task is to either replace this with
-    DVNC's canonical VectorQuantizer (preferred) or to flesh this
-    out minimally from the paper's algorithm section. ***
+    Does NOT include DVNC's multi-headed grouping extension or
+    k-means initialisation; the baseline mirrors van den Oord's
+    original single-head formulation, which is a strict subset of
+    DVNC and the common denominator for comparison.
     """
 
-    def __init__(self, codebook_size: int, d_hidden: int) -> None:
+    def __init__(
+        self,
+        codebook_size:     int,
+        embedding_dim:     int,
+        commitment_cost:   float = 0.25,
+        kld_scale:         float = 10.0,
+    ) -> None:
         super().__init__()
-        self.codebook = nn.Embedding(codebook_size, d_hidden)
-        nn.init.uniform_(
-            self.codebook.weight, -1.0 / codebook_size, 1.0 / codebook_size,
+        self.embedding = nn.Embedding(codebook_size, embedding_dim)
+        self.embedding.weight.data.uniform_(
+            -1.0 / codebook_size, 1.0 / codebook_size,
         )
         self.codebook_size = codebook_size
-        self.d_hidden = d_hidden
+        self.embedding_dim = embedding_dim
+        self.commitment_cost = commitment_cost
+        self.kld_scale = kld_scale
 
-    def forward(self, z: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Return (z_q, codes, commitment_loss). TODO verify against DVNC paper."""
-        raise NotImplementedError(
-            "Stub: replace with DVNC VectorQuantizer or complete the "
-            "minimal re-implementation per the paper algorithm."
+    def forward(
+        self, z: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Quantise z: [B, D] -> (z_q [B, D], commit_loss, codes [B])."""
+        dist = (
+            z.pow(2).sum(1, keepdim=True)
+            - 2 * z @ self.embedding.weight.t()
+            + self.embedding.weight.pow(2).sum(1, keepdim=True).t()
         )
+        codes = dist.argmin(dim=-1)
+        z_q = self.embedding(codes)
+
+        e_loss = F.mse_loss(z_q.detach(), z)
+        q_loss = F.mse_loss(z_q, z.detach())
+        commit_loss = self.kld_scale * (self.commitment_cost * e_loss + q_loss)
+
+        z_q = z + (z_q - z).detach()
+        return z_q, commit_loss, codes
 
 
 class _Agent(nn.Module):
-    """Homogeneous encoder-classifier pair, DVNC style (no substrate asymmetry)."""
+    """Homogeneous encoder-classifier agent (DVNC style).
 
-    def __init__(self, input_dim: int, d_hidden: int, n_classes: int) -> None:
+    Two instances of this class share the same structure; the
+    comparison with nerve-wml is meaningful because any observed
+    gap reflects the shared-codebook vs per-WML-codebook-plus-
+    transducers difference, not substrate asymmetry.
+    """
+
+    def __init__(
+        self,
+        input_dim:  int,
+        d_hidden:   int,
+        n_classes:  int,
+    ) -> None:
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Linear(input_dim, d_hidden),
@@ -107,65 +122,55 @@ class _Agent(nn.Module):
         return self.classifier(z)
 
 
-def _build_shared_vq(codebook_size: int, d_hidden: int):
-    """Instantiate the shared VQ bottleneck.
-
-    TODO Day 1 PM: replace the stub with the actual DVNC
-    VectorQuantizer instance.
-    """
-    raise NotImplementedError(
-        "Wiring TODO: swap in DVNC VectorQuantizer. See top-of-file "
-        "docstring for instructions."
-    )
-    # Example wiring once DVNC is imported:
-    #   return VectorQuantizer(
-    #       num_embeddings=codebook_size,
-    #       embedding_dim=d_hidden,
-    #       commitment_cost=0.25,  # DVNC default, verify
-    #   )
-
-
 def _train_dvnc_pair(
-    seed: int,
-    steps: int,
-    d_hidden: int = 16,
-    codebook_size: int = 64,
-    lr: float = 1e-2,
-) -> tuple[_Agent, _Agent, nn.Module, HardFlowProxyTask]:
-    """Train two homogeneous agents with a shared VQ codebook.
+    seed:           int,
+    steps:          int,
+    d_hidden:       int   = 16,
+    codebook_size:  int   = 64,
+    lr:             float = 1e-2,
+    batch:          int   = 64,
+) -> tuple[_Agent, _Agent, _SharedVectorQuantizer, HardFlowProxyTask]:
+    """Train two homogeneous agents sharing a VQ codebook.
 
-    Both agents receive the same input x, encode it via their
-    respective encoder, then both encodings are quantised through
-    the SHARED VectorQuantizer. Loss = CE(agent_a) + CE(agent_b)
-    + commitment_loss (VQ-VAE standard).
-
-    Returns: (agent_a, agent_b, shared_vq, task) for downstream
-    eval-time code extraction.
-
-    TODO Day 2 AM: complete the forward + loss + optimizer loop.
+    Both agents see the same x, encode independently, quantise via
+    the shared codebook, then classify from the quantised vector.
+    Loss = CE(a) + CE(b) + commit(a) + commit(b).
     """
     torch.manual_seed(seed)
-
     task = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
+
     agent_a = _Agent(input_dim=16, d_hidden=d_hidden, n_classes=12)
     agent_b = _Agent(input_dim=16, d_hidden=d_hidden, n_classes=12)
-    shared_vq = _build_shared_vq(codebook_size, d_hidden)
+    shared_vq = _SharedVectorQuantizer(
+        codebook_size=codebook_size, embedding_dim=d_hidden,
+    )
 
-    # TODO: optimizer = torch.optim.Adam(all_params, lr=lr)
-    # TODO: for step in range(steps):
-    #           x, y = task.sample(batch=64)
-    #           z_a = agent_a.encode(x)
-    #           z_b = agent_b.encode(x)
-    #           z_a_q, codes_a, commit_a = shared_vq(z_a)
-    #           z_b_q, codes_b, commit_b = shared_vq(z_b)
-    #           logits_a = agent_a.classify(z_a_q)
-    #           logits_b = agent_b.classify(z_b_q)
-    #           loss = F.cross_entropy(logits_a, y) \\
-    #                + F.cross_entropy(logits_b, y) \\
-    #                + commit_a + commit_b
-    #           opt.zero_grad(); loss.backward(); opt.step()
+    params = (
+        list(agent_a.parameters())
+        + list(agent_b.parameters())
+        + list(shared_vq.parameters())
+    )
+    opt = torch.optim.Adam(params, lr=lr)
 
-    raise NotImplementedError("TODO Day 2 AM: complete training loop")
+    for _ in range(steps):
+        x, y = task.sample(batch=batch)
+        z_a = agent_a.encode(x)
+        z_b = agent_b.encode(x)
+        z_a_q, commit_a, _ = shared_vq(z_a)
+        z_b_q, commit_b, _ = shared_vq(z_b)
+        logits_a = agent_a.classify(z_a_q)
+        logits_b = agent_b.classify(z_b_q)
+        loss = (
+            F.cross_entropy(logits_a, y)
+            + F.cross_entropy(logits_b, y)
+            + commit_a
+            + commit_b
+        )
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    return agent_a, agent_b, shared_vq, task
 
 
 def main() -> None:
@@ -191,7 +196,7 @@ def main() -> None:
 
     for seed in args.seeds:
         print(f"seed {seed}: training DVNC pair ({args.steps} steps)...")
-        agent_a, agent_b, shared_vq, task = _train_dvnc_pair(
+        agent_a, agent_b, shared_vq, _task = _train_dvnc_pair(
             seed=seed,
             steps=args.steps,
             d_hidden=args.d_hidden,
@@ -201,25 +206,32 @@ def main() -> None:
         eval_task = HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
         x_eval, y_eval = eval_task.sample(batch=args.n_eval)
 
-        # TODO Day 2 PM: extract codes + embeddings via forward pass.
+        agent_a.eval()
+        agent_b.eval()
+        shared_vq.eval()
         with torch.no_grad():
-            # z_a = agent_a.encode(x_eval)
-            # z_b = agent_b.encode(x_eval)
-            # _, codes_a, _ = shared_vq(z_a)
-            # _, codes_b, _ = shared_vq(z_b)
-            # pred_a = agent_a.classify(z_a).argmax(-1)
-            # pred_b = agent_b.classify(z_b).argmax(-1)
-            raise NotImplementedError(
-                "TODO Day 2 PM: extract codes + accs after forward pass."
-            )
+            z_a = agent_a.encode(x_eval)
+            z_b = agent_b.encode(x_eval)
+            _, _, codes_a = shared_vq(z_a)
+            _, _, codes_b = shared_vq(z_b)
+            z_a_q = shared_vq.embedding(codes_a)
+            z_b_q = shared_vq.embedding(codes_b)
+            pred_a = agent_a.classify(z_a_q).argmax(-1)
+            pred_b = agent_b.classify(z_b_q).argmax(-1)
+            acc_a = (pred_a == y_eval).float().mean().item()
+            acc_b = (pred_b == y_eval).float().mean().item()
 
-        # Placeholder for when wiring is done:
-        # all_codes_a.append(codes_a.cpu().numpy().astype(np.int64))
-        # all_codes_b.append(codes_b.cpu().numpy().astype(np.int64))
-        # all_emb_a.append(z_a.cpu().numpy().astype(np.float32))
-        # all_emb_b.append(z_b.cpu().numpy().astype(np.float32))
-        # accs_a.append((pred_a == y_eval).float().mean().item())
-        # accs_b.append((pred_b == y_eval).float().mean().item())
+        all_codes_a.append(codes_a.cpu().numpy().astype(np.int64))
+        all_codes_b.append(codes_b.cpu().numpy().astype(np.int64))
+        all_emb_a.append(z_a.cpu().numpy().astype(np.float32))
+        all_emb_b.append(z_b.cpu().numpy().astype(np.float32))
+        accs_a.append(acc_a)
+        accs_b.append(acc_b)
+        print(
+            f"  acc_a={acc_a:.4f}, acc_b={acc_b:.4f}, "
+            f"alphabet_a={len(np.unique(all_codes_a[-1]))}/64, "
+            f"alphabet_b={len(np.unique(all_codes_b[-1]))}/64"
+        )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
@@ -236,6 +248,10 @@ def main() -> None:
     )
     print()
     print(f"Saved: {args.out}")
+    print(f"Mean acc: a={np.mean(accs_a):.4f}, b={np.mean(accs_b):.4f}")
+    print(
+        f"Mean pairwise gap: {abs(np.mean(accs_a) - np.mean(accs_b)):.4f}"
+    )
 
 
 if __name__ == "__main__":
