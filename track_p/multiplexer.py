@@ -21,6 +21,7 @@ Q1-Q5 design arbitration lives on issue #1 comment thread.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -118,10 +119,18 @@ class GammaThetaMultiplexer(nn.Module):
     _t_grid: Tensor
 
     def __init__(
-        self, cfg: GammaThetaConfig | None = None, *, seed: int | None = None
+        self,
+        cfg: GammaThetaConfig | None = None,
+        *,
+        seed: int | None = None,
+        plasticity_schedule: Callable[[int], float] | None = None,
+        constellation_lock_after: int | None = None,
     ) -> None:
         super().__init__()
         self.cfg = cfg if cfg is not None else GammaThetaConfig()
+        self._plasticity_schedule = plasticity_schedule
+        self._constellation_lock_after = constellation_lock_after
+        self.plasticity_step: int = 0
 
         # Constellation init: true PSK on the unit circle + small randn
         # perturbation for symmetry breaking. Min pairwise distance is
