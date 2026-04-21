@@ -1,0 +1,54 @@
+{
+  "per_d_hidden": [
+    {
+      "d_hidden": 16,
+      "mi_plugin_mean": 0.45200456073213385,
+      "null_z_mean": 474.3221553553396,
+      "acc_mlp_mean": 0.5834957957267761,
+      "acc_lif_mean": 0.2537361979484558,
+      "gap": 0.3297595977783203,
+      "alphabet_mlp": 5,
+      "alphabet_lif": 5
+    },
+    {
+      "d_hidden": 32,
+      "mi_plugin_mean": 0.6804613438476127,
+      "null_z_mean": 677.3176009415834,
+      "acc_mlp_mean": 0.7469136118888855,
+      "acc_lif_mean": 0.7147498726844788,
+      "gap": 0.03216373920440674,
+      "alphabet_mlp": 5,
+      "alphabet_lif": 5
+    },
+    {
+      "d_hidden": 64,
+      "mi_plugin_mean": 0.6842323758884318,
+      "null_z_mean": 630.2894654930918,
+      "acc_mlp_mean": 0.7709551453590393,
+      "acc_lif_mean": 0.7763158679008484,
+      "gap": 0.005360722541809082,
+      "alphabet_mlp": 5,
+      "alphabet_lif": 5
+    },
+    {
+      "d_hidden": 128,
+      "mi_plugin_mean": 0.722857920075359,
+      "null_z_mean": 665.4210962812402,
+      "acc_mlp_mean": 0.8190383315086365,
+      "acc_lif_mean": 0.825373649597168,
+      "gap": 0.006335318088531494,
+      "alphabet_mlp": 5,
+      "alphabet_lif": 5
+    },
+    {
+      "d_hidden": 256,
+      "mi_plugin_mean": 0.6578689128700727,
+      "null_z_mean": 620.7411627855843,
+      "acc_mlp_mean": 0.7589343190193176,
+      "acc_lif_mean": 0.8192007541656494,
+      "gap": 0.06026643514633179,
+      "alphabet_mlp": 5,
+      "alphabet_lif": 5
+    }
+  ]
+}
