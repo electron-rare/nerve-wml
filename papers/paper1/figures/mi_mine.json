@@ -1,0 +1,37 @@
+{
+  "per_seed": [
+    {
+      "seed": 0,
+      "mi_mine_nats": 1.7777194786071777,
+      "mi_mine_over_h_a": 0.9908064447223939,
+      "h_a_nats": 1.7942146905445924,
+      "n_epochs": 500,
+      "n_samples": 2000
+    },
+    {
+      "seed": 1,
+      "mi_mine_nats": 1.7597685766220093,
+      "mi_mine_over_h_a": 0.9815376315269543,
+      "h_a_nats": 1.7928691881985004,
+      "n_epochs": 500,
+      "n_samples": 2000
+    },
+    {
+      "seed": 2,
+      "mi_mine_nats": 2.184853267669678,
+      "mi_mine_over_h_a": 0.9836575958808962,
+      "h_a_nats": 2.221152235105828,
+      "n_epochs": 500,
+      "n_samples": 2000
+    }
+  ],
+  "summary": {
+    "mi_mine_nats_mean": 1.907447107632955,
+    "mi_mine_over_h_a_mean": 0.9853338907100815,
+    "n_seeds": 3,
+    "n_epochs": 500,
+    "n_samples": 2000,
+    "hidden": 128,
+    "batch_size": 256
+  }
+}

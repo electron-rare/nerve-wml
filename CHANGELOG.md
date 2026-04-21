@@ -2,6 +2,59 @@
 
 All notable changes to `nerve-wml` follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] — 2026-04-21
+
+Methodology release honouring the v1.5.2 cross-lab methodology
+commitment. Adds the `nerve_wml.methodology` submodule shared with
+`bouba_sens` (section 6.3 pre-registered methodology). The v1.2.3
+scientific baseline is unchanged; the MI/H headline is now reported
+with null-model significance, bootstrap CI, and four-estimator
+robustness.
+
+### Added
+
+- `nerve_wml.methodology.mi_null_model` — permutation significance
+  test (z > 1000, p < 10⁻³ on the 3-seed MLP↔LIF codes).
+- `nerve_wml.methodology.bootstrap_ci_mi` — non-parametric bootstrap
+  confidence interval (CI95 [0.82, 0.99] across seeds).
+- `nerve_wml.methodology.mi_estimators` — `mi_plugin_discrete`,
+  `mi_miller_madow_discrete`, `mi_kraskov_ksg_continuous`,
+  `entropy_discrete`.
+- `nerve_wml.methodology.mi_mine_estimator` — MINE (Belghazi 2018
+  Donsker-Varadhan bound, 128-hidden critic, tail-averaged).
+- `scripts/save_codes_for_checks.py` — produces the
+  `tests/golden/codes_mlp_lif.npz` reproducibility artefact
+  containing 3-seed argmax codes + pre-VQ continuous embeddings.
+- `scripts/measure_mi_null_model.py`, `measure_mi_bootstrap_ci.py`,
+  `measure_mi_multi_estimator.py`, `measure_mi_mine.py` — four
+  light-weight measurement scripts consuming the NPZ.
+- `scripts/ablation_n3_guard.py` + `scripts/ablation_n3_predictive.py`
+  — N-3 gate investigation closure (three convergent ablations).
+- `docs/research-notes/n3-gate-role.md` — full reasoning trace.
+- `papers/paper1/main.tex` — new Test (7) "Multi-estimator
+  robustness" with Table 3 (plug-in / Miller-Madow / KSG / MINE
+  side-by-side) and an honest interpretation flagging the pre-VQ
+  continuous-estimator divergence as an open methodological
+  question.
+- `scipy` added as dependency (required by KSG digamma).
+
+### Changed
+
+- `README.md` — Status header bumped to v1.5.3; Cross-lab methodology
+  commitment section updated to reflect the three delivered checks
+  plus the continuous-estimator divergence between KSG and MINE.
+
+### Reproducibility
+
+- `tests/golden/codes_mlp_lif.npz` — 3-seed MLP+LIF codes (shape
+  `(3, 5000)` int64) plus pre-VQ embeddings (shape `(3, 5000, 16)`
+  float32).
+- `papers/paper1/figures/mi_{null_model,bootstrap_ci,multi_estimator,mine}.json`
+  — primary result JSONs.
+
+See [`docs/changelog/v1.5.3.md`](docs/changelog/v1.5.3.md) for the
+full scientific rationale.
+
 ## [1.5.1] — 2026-04-21
 
 First PyPI release (`pip install nerve-wml`). Patch bump that syncs the

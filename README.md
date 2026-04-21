@@ -9,16 +9,18 @@ Citation : each release is archived on Zenodo (concept DOI [10.5281/zenodo.19656
 
 Research engine that validates a discrete-code communication layer between heterogeneous neural modules (World Model Languages, or WMLs). Modules exchange **neuroletters** over a sparse learned topology, multiplexed on gamma/theta rhythms, and converted between local codebooks by per-edge transducers. The paper draft is at [`papers/paper1/main.tex`](papers/paper1/main.tex); the full spec is at [`docs/superpowers/specs/2026-04-18-nerve-wml-design.md`](docs/superpowers/specs/2026-04-18-nerve-wml-design.md).
 
-## Status — v1.5.2 (2026-04-21, on PyPI)
+## Status — v1.5.3 (2026-04-21, on PyPI)
 
-Installable via `pip install nerve-wml`. Three feature releases landed on
-2026-04-21 (v1.4.0 → v1.5.1) on top of the v1.2.3 scientific baseline; see
+Installable via `pip install nerve-wml`. Four releases landed on
+2026-04-21 (v1.4.0 → v1.5.3) on top of the v1.2.3 scientific baseline; see
 [§ Post-v1.2.3 API additions](#post-v123-api-additions-2026-04-21) below
 or [`CHANGELOG.md`](CHANGELOG.md) for the per-version diff. The **scientific
 claims below are the v1.2.3 baseline and remain load-bearing** — the newer
 releases added opt-in knobs (plasticity schedule, Gumbel-softmax gating,
-spectrogram encoder, dreamOfkiki axiom bridge scaffold) without changing
-any headline measurement.
+spectrogram encoder, dreamOfkiki axiom bridge scaffold) and the
+`nerve_wml.methodology` submodule with the four MI robustness primitives
+(null-model, bootstrap CI, Miller-Madow, Kraskov KSG, MINE) — all without
+changing any headline measurement.
 
 The project is empirically defensible across three experimental axes: real
 data, architecture scale, and temporal streaming. Two claims are quantified:
@@ -71,7 +73,7 @@ The paper explicitly does **not** claim: a new learning algorithm, superiority o
 
 ### Cross-lab methodology commitment
 
-The sister project `bouba_sens` (2026-04-21, `github.com/hypneum-lab/bouba_sens` tag `v0.5.0`) demonstrated that pre-registered findings in this programme must pass three critical tests before publication: **null-model partition controls**, **bootstrap confidence intervals** on sub-threshold effects, and **multi-estimator robustness** checks for MI-based claims. The MI/H = 0.91–0.96 figure above was measured with only one estimator (argmax one-hot + entropy-normalized MI) ; a Sprint-equivalent cross-check against Kraskov kNN and MINE is planned for v1.6 before the paper is submitted. Until then, the MI/H headline is to be read with the usual "single-estimator" caveat that `bouba_sens` paper §6.3 recommends against.
+The sister project `bouba_sens` (2026-04-21, `github.com/hypneum-lab/bouba_sens` tag `v0.5.0`) demonstrated that pre-registered findings in this programme must pass three critical tests before publication: **null-model partition controls**, **bootstrap confidence intervals** on sub-threshold effects, and **multi-estimator robustness** checks for MI-based claims. As of **v1.5.3** (2026-04-21) all three checks are implemented in `nerve_wml.methodology` and applied to the MI/H headline: **null-model rejects chance** at z > 1000 (p < 10⁻³ over 3 seeds × 1000 shuffles), **bootstrap** gives CI95 [0.82, 0.99] intra-seed width ~0.005, and **discrete cross-estimator robustness** holds between plug-in and Miller-Madow (Δ = 0.007). Two continuous estimators (Kraskov KSG and MINE) were applied to the pre-VQ embeddings; they diverge by an order of magnitude (KSG 0.09, MINE 0.99), making the pre-VQ absolute MI magnitude an open methodological question — see paper §Information Transmission Test (7). The post-VQ discrete MI/H headline is unaffected by this ambiguity.
 
 ## Status — 11 gates
 
