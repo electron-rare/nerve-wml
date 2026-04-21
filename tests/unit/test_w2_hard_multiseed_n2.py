@@ -1,4 +1,18 @@
-from scripts.track_w_pilot import run_w2_hard_multiseed
+from scripts.track_w_pilot import run_w2_hard, run_w2_hard_multiseed
+
+
+def test_run_w2_hard_seed_0_is_deterministic() -> None:
+    """Pin the load-bearing invariant: seed=0 reproduces bit-for-bit.
+
+    The v1.6.0 10.71% N=2 anchor is cited in paper Claim A scaling
+    law. A silent regression where a later refactor breaks seeding
+    would invalidate that paper number without CI catching it.
+    """
+    a = run_w2_hard(steps=50, seed=0)
+    b = run_w2_hard(steps=50, seed=0)
+    assert a["gap"] == b["gap"]
+    assert a["acc_mlp"] == b["acc_mlp"]
+    assert a["acc_lif"] == b["acc_lif"]
 
 
 def test_run_w2_hard_multiseed_returns_5_seed_stats() -> None:
