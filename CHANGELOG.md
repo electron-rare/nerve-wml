@@ -49,7 +49,7 @@ Fully backward-compatible.
 - §Related Work: `peng2025gridlikevq` + `zhao2025channelavq`
   citations (review m6 + m7, commit `2faf585`).
 - Abstract: version tag `v1.3.0` → `v1.7.0`, MI/H + WML glossary
-  entries, "15/15 → 20/20 seed claim" fix (review m1 + m2 + W2,
+  entries, "15/15 → 19/20 seed claim" fix (review m1 + m2 + W2,
   commit `d487735`).
 - `docs/changelog/v1.7.0.md` — full scientific rationale.
 - `docs/research-notes/paper-v1.7.0-review-response.md` —
@@ -77,11 +77,11 @@ Fully backward-compatible.
 - **Sleep-EDF sweet spot at d=128.** MLP 0.82 / LIF 0.83 /
   gap 0.006 on matched-capacity scale sweep; scale-invariant
   polymorphy at d ∈ {32, 64, 128}.
-- **Direction stability strengthened to 20/20.** N=2 rerun at
+- **Direction stability strengthened to 19/20.** N=2 rerun at
   5 seeds preserves LIF ≥ MLP in 4/5 seeds (with the failing
   seed at a 4 % gap, below contract); combined with N=16/32/64
-  at 5 seeds each, the abstract's direction-stability claim is
-  now 20/20 pairwise measurements.
+  at 5 seeds each (5/5 each), the abstract's direction-stability
+  claim is now 19/20 pairwise measurements.
 
 See [`docs/changelog/v1.7.0.md`](docs/changelog/v1.7.0.md) for
 the full scientific rationale and
