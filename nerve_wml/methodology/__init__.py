@@ -31,6 +31,7 @@ from nerve_wml.methodology.mi_estimators import (
     mi_miller_madow_discrete,
     mi_plugin_discrete,
 )
+from nerve_wml.methodology.mi_mine_estimator import mi_mine
 from nerve_wml.methodology.mi_null_model import (
     NullModelResult,
     mi_argmax_onehot,
@@ -45,6 +46,7 @@ __all__ = [
     "mi_argmax_onehot",
     "mi_kraskov_ksg_continuous",
     "mi_miller_madow_discrete",
+    "mi_mine",
     "mi_plugin_discrete",
     "null_model_mi",
 ]
