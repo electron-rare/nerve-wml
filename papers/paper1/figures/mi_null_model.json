@@ -1,0 +1,39 @@
+{
+  "per_seed": [
+    {
+      "seed": 0,
+      "mi_observed": 0.9918481582296597,
+      "mi_null_mean": 0.0055198606114975875,
+      "mi_null_std": 0.0007470780812461501,
+      "z_score": 1320.2479397775062,
+      "p_value": 0.0,
+      "n_shuffles": 1000
+    },
+    {
+      "seed": 1,
+      "mi_observed": 0.9816504621888695,
+      "mi_null_mean": 0.0076480048259669284,
+      "mi_null_std": 0.0007691442664409786,
+      "z_score": 1266.3455997271535,
+      "p_value": 0.0,
+      "n_shuffles": 1000
+    },
+    {
+      "seed": 2,
+      "mi_observed": 0.8221852503895152,
+      "mi_null_mean": 0.0072043281236288,
+      "mi_null_std": 0.0007565665306207012,
+      "z_score": 1077.2098543630536,
+      "p_value": 0.0,
+      "n_shuffles": 1000
+    }
+  ],
+  "summary": {
+    "mi_observed_mean": 0.9318946236026814,
+    "z_score_mean": 1221.2677979559046,
+    "p_value_max": 0.0,
+    "significant": true,
+    "n_seeds": 3,
+    "n_shuffles": 1000
+  }
+}
