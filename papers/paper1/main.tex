@@ -397,6 +397,10 @@ The vendor SDKs are not runtime deps; see
 encodes them as schema-v0 \texttt{np.int32} arrays of shape
 $[n\_\text{events}, 4]$, and applies a consolidation delta (supplied
 externally by \texttt{kiki\_oniric}) to per-edge transducers in place.
+End-to-end validation ($\gamma$ emission $\to$ $\theta$ collection
+$\to$ zero-delta consolidation) is covered by
+\texttt{scripts/ablation\_n3\_predictive.py}, confirming the pipeline
+plumbing independently of the upstream \texttt{kiki\_oniric} release.
 CI uses a \texttt{MockConsolidator} returning zero-delta;
 \texttt{gate-dream-passed} is marked \emph{partial} pending the
 \texttt{kiki\_oniric} v0.5+ public \texttt{consolidate()} surface.
@@ -411,6 +415,20 @@ overhead is under 1\,ms. The advisor \textbf{never raises} --- every
 exception returns \texttt{None}, so the host runtime is not destabilised
 by advisor failures. A self-contained downstream-PR recipe is at
 \texttt{docs/integration/micro-kiki-wiring.md}.
+
+\textit{Downstream composability (bouba\_sens).}
+The v1.4.0--v1.5.0 feature releases (\texttt{plasticity\_schedule} +
+\texttt{constellation\_lock\_after} for B-1 Amedi-2007 gap probes,
+\texttt{TransducerGating.GUMBEL\_SOFTMAX} for B-2 Me3-delta migration,
+and \texttt{MlpWML.from\_spectrogram(\ldots)} for the shared STFT-carrier
+path) were filed by \texttt{bouba\_sens}, the first empirical consumer
+of the nerve-wml downstream API. All three surfaces are opt-in and
+backward-compatible with the v1.2.3 scientific baseline
+(\S\ref{sec:info-tx}); \texttt{bouba\_sens} ADR-0007 paired-run CLI
+(\texttt{eval --t1-ckpt/--t2-ckpt}) consumes them to produce the
+5-world grid. Composability in the other direction (downstream
+\emph{changes} to nerve-wml) is enforced by 102 tests plus the
+\texttt{gate-*-passed} invariant tags.
 
 \section{Limitations and Future Work}
 The experiments in this draft use toy signals and small WML pools

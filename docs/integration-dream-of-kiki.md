@@ -46,6 +46,30 @@ message naming the missing keys or the malformed argument. Once a spec
 passes validation, `from_dream_of_kiki` raises `NotImplementedError`
 with an upstream pointer.
 
+## Pipeline validation (pre-upstream, 2026-04-21)
+
+While the `from_dream_of_kiki` factory itself remains gated on
+`dream-of-kiki` publishing `axioms.py`, the **γ → θ → consolidate
+pipeline that the bridge targets has been validated end-to-end**
+without waiting for the upstream release.
+
+`scripts/ablation_n3_predictive.py` (commit `a866b28`) exercises:
+
+1. **γ phase** — `MlpWML.step(nerve, t)` where `emit_head_eps`
+   naturally emits ε letters when internal surprise
+   `(h − h_prior).norm()` exceeds `threshold_eps=0.30`.
+2. **θ phase** — `DreamBridge.collect_eps_trace(nerve, 200 ticks)`
+   records 200 `role=ERROR, phase=THETA` letters per 200 ticks,
+   all structurally compliant with invariant N-3.
+3. **Consolidation** — `DreamBridge.apply_consolidation_output(nerve, delta)`
+   applies the delta to transducer logits (env-gated).
+
+When `kiki_oniric` publishes its public API, only the **content**
+of `delta` in step (3) needs to be substituted — the interface
+contract is already exercised and the pipeline plumbing validated.
+See `docs/research-notes/n3-gate-role.md` for the full reasoning
+behind why Δ = 0 on this pipeline is the expected, correct result.
+
 ## Example usage (target API)
 
 ```python
