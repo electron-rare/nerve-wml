@@ -50,3 +50,39 @@ def test_constellation_lock_is_permanent() -> None:
     for _ in range(10):
         mux.step()
     assert mux.constellation.requires_grad is False
+
+
+def test_plasticity_schedule_scales_constellation_gradient() -> None:
+    """A schedule returning 0.5 must halve the gradient magnitude.
+
+    The check is done by running a minimal forward + backward with
+    a schedule returning a fixed 0.5, then comparing |grad| to the
+    reference run (schedule = constant 1.0). Ratio must be exactly
+    0.5 (no numerical slop since both runs share the same seed).
+    """
+    torch.manual_seed(42)
+    codes = torch.randint(0, 64, (4, 7))
+
+    def half_schedule(step: int) -> float:
+        return 0.5
+
+    def full_schedule(step: int) -> float:
+        return 1.0
+
+    mux_half = GammaThetaMultiplexer(seed=0, plasticity_schedule=half_schedule)
+    mux_full = GammaThetaMultiplexer(seed=0, plasticity_schedule=full_schedule)
+
+    carrier_half = mux_half.forward(codes)
+    carrier_full = mux_full.forward(codes)
+
+    loss_half = carrier_half.sum()
+    loss_full = carrier_full.sum()
+
+    loss_half.backward()
+    loss_full.backward()
+
+    grad_norm_half = mux_half.constellation.grad.abs().sum()
+    grad_norm_full = mux_full.constellation.grad.abs().sum()
+
+    ratio = (grad_norm_half / grad_norm_full).item()
+    assert abs(ratio - 0.5) < 1e-6, f"expected 0.5x scaling, got {ratio}"

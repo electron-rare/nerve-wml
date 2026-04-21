@@ -165,6 +165,12 @@ class GammaThetaMultiplexer(nn.Module):
         )
         self.register_buffer("_t_grid", t_grid)
 
+        # Plasticity hook: when a schedule is registered, multiply every
+        # gradient flowing into the constellation by `schedule(step)`. A
+        # constant-1.0 schedule is exactly equivalent to no hook (identity).
+        if self._plasticity_schedule is not None:
+            self.constellation.register_hook(self._apply_plasticity_schedule)
+
     def step(self) -> None:
         """Advance the plasticity clock by one iteration.
 
@@ -180,6 +186,20 @@ class GammaThetaMultiplexer(nn.Module):
             and self.plasticity_step >= self._constellation_lock_after
         ):
             self.constellation.requires_grad_(False)
+
+    def _apply_plasticity_schedule(self, grad: Tensor) -> Tensor:
+        """Backward hook: scale `grad` by `plasticity_schedule(step)`.
+
+        Called by autograd during `.backward()`. `grad` is the upstream
+        gradient of the loss w.r.t. the constellation parameter; we
+        return the scaled tensor and autograd uses that instead. Clamp
+        scale to a plain Python float so autograd never tries to track
+        the schedule itself.
+        """
+        if self._plasticity_schedule is None:  # defensive, never hit at runtime
+            return grad
+        scale = float(self._plasticity_schedule(self.plasticity_step))
+        return grad * scale
 
     def forward(
         self,
