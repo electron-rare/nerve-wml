@@ -12,11 +12,17 @@ Research engine that validates a discrete-code communication layer between heter
 ## Status — v1.8.0 (2026-04-24, on PyPI)
 
 Installable via `pip install nerve-wml`. For the real
-`kiki_oniric.axioms` integration (dream-of-kiki bridge), install the
-axioms extra: `uv sync --extra axioms` or
-`pip install "nerve-wml @ git+... ; extras=['axioms']"`. Six releases
-landed on 2026-04-21 → 2026-04-24 (v1.4.0 → v1.8.0) on top of the
-v1.2.3 scientific baseline; see
+`kiki_oniric.axioms` integration (dream-of-kiki bridge), side-install
+`dreamofkiki` first (PyPI rejects VCS URLs in published metadata, so
+no `[axioms]` extras group is shipped):
+
+```bash
+pip install "dreamofkiki @ git+https://github.com/hypneum-lab/dream-of-kiki@v0.9.1"
+pip install nerve-wml
+```
+
+Six releases landed on 2026-04-21 → 2026-04-24 (v1.4.0 → v1.8.0) on top
+of the v1.2.3 scientific baseline; see
 [§ Post-v1.2.3 API additions](#post-v123-api-additions-2026-04-21) below
 or [`CHANGELOG.md`](CHANGELOG.md) for the per-version diff. The **scientific
 claims below are the v1.2.3 baseline and remain load-bearing** — the newer

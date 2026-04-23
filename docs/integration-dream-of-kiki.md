@@ -128,13 +128,17 @@ Three reasons:
 ## v1.8.0-axioms (2026-04-24)
 
 Real `kiki_oniric.axioms.DR0..DR4` instances are now first-class inputs
-to `from_dream_of_kiki`. Install the optional extra:
+to `from_dream_of_kiki`. Because `dreamofkiki` is not on PyPI yet and
+PyPI rejects direct VCS references in published metadata, the install
+is a side-install (no `[axioms]` extras group):
 
 ```bash
-uv sync --extra axioms
+pip install "dreamofkiki @ git+https://github.com/hypneum-lab/dream-of-kiki@v0.9.1"
+pip install nerve-wml
 ```
 
-When installed, users can pass real `Axiom` instances directly:
+When `dreamofkiki` is importable, users can pass real `Axiom` instances
+directly:
 
 ```python
 from kiki_oniric import axioms as up

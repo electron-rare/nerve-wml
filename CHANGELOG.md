@@ -12,14 +12,15 @@ See `docs/changelog/v1.8.0.md` for the full rationale.
 
 ### Added
 
-- Optional extras group `nerve-wml[axioms]` pointing to
-  `dreamofkiki @ git+https://github.com/hypneum-lab/dream-of-kiki@v0.9.1`.
 - `nerve_core.axioms_compat.check_upstream_axioms_version` with
   pinned `C-v0.8.0+PARTIAL` target and `UpstreamAxiomsVersionWarning`.
   Runs once at `nerve_core` import.
 - DR-2 predicate consumption: `_check_dr2_predicate_if_present`
   invokes the upstream `_dr2_precondition` predicate when DR-2 is an
   `Axiom` instance and the spec carries an `operation_order` hint.
+- Real `kiki_oniric.axioms.DR0..DR4` instances accepted as first-class
+  spec values by `from_dream_of_kiki` (side-install only — PyPI rejects
+  VCS URLs in published metadata; see `docs/changelog/v1.8.0.md`).
 
 ### Changed
 
