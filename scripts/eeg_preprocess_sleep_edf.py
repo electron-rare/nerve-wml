@@ -30,9 +30,16 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import mne
 import numpy as np
-from mne.datasets import sleep_physionet
+
+try:
+    import mne
+    from mne.datasets import sleep_physionet
+except ImportError as _e:  # pragma: no cover -- guarded extras
+    raise ImportError(
+        "mne is required for EEG preprocessing but not installed. "
+        "Install with: pip install nerve-wml[interpret]"
+    ) from _e
 
 SLEEP_STAGE_MAP = {
     "Sleep stage W": 0,
