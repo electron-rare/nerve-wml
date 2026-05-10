@@ -17,9 +17,6 @@ contract is appropriate for saturated / linearly-separable regimes;
 on hard tasks, a ~7 % gap with stable direction is the honest
 measurement.
 """
-import os
-import sys
-
 import pytest
 import torch
 
@@ -30,15 +27,7 @@ from scripts.track_w_pilot import (
     run_w2_hard_n32_multiseed,
     run_w2_hard_n64_multiseed,
 )
-
-# N2 Task 4 follow-up (2026-05-10): platform-fragile on Linux/Py3.12 CI;
-# stable on macOS/Py3.14 dev. Real fix is N3 (statistical-test seed
-# hardening). xfail preserves test surface + green CI.
-_LINUX_CI_312 = (
-    os.environ.get("CI") == "true"
-    and sys.platform == "linux"
-    and sys.version_info[:2] == (3, 12)
-)
+from tests.conftest import LINUX_CI_312
 
 
 def test_w2_hard_n16_gap_under_5pct():
@@ -68,7 +57,7 @@ def test_w2_hard_n32_gap_under_5pct():
 
 
 @pytest.mark.xfail(
-    _LINUX_CI_312,
+    LINUX_CI_312,
     reason=(
         "Platform-dependent: RNG-sensitive statistical claim; N=16 "
         "gap stays within tolerance on macOS/Py3.14 but exceeds on "

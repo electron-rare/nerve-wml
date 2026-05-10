@@ -11,23 +11,12 @@ gating is the reason B-2 Me3 delta stays under threshold.
 """
 from __future__ import annotations
 
-import os
-import sys
-
 import pytest
 
 torch = pytest.importorskip("torch")
 
+from tests.conftest import LINUX_CI_312
 from track_p.transducer import Transducer, TransducerGating
-
-# N2 Task 4 follow-up (2026-05-10): platform-fragile on Linux/Py3.12 CI;
-# stable on macOS/Py3.14 dev. Real fix is N3 (torch autograd Linux
-# investigation). xfail preserves test surface + green CI.
-_LINUX_CI_312 = (
-    os.environ.get("CI") == "true"
-    and sys.platform == "linux"
-    and sys.version_info[:2] == (3, 12)
-)
 
 
 _ALPHABET = 16
@@ -88,7 +77,7 @@ def test_gumbel_softmax_returns_soft_distribution():
 
 
 @pytest.mark.xfail(
-    _LINUX_CI_312,
+    LINUX_CI_312,
     reason=(
         "Platform-dependent: torch autograd Gumbel softmax gradient "
         "flow differs on Linux/Py3.12 — t.logits.grad.abs().sum() "
