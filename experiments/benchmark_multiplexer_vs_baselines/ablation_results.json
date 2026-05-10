@@ -1,0 +1,114 @@
+{
+  "config": {
+    "steps": 800,
+    "batch": 64,
+    "dim": 16,
+    "n_classes": 12,
+    "code_dim": 16,
+    "seeds": [
+      0,
+      17,
+      42,
+      73,
+      101
+    ],
+    "ablations": [
+      "gtm_gamma_only",
+      "gtm_theta_only",
+      "gtm_no_plasticity"
+    ],
+    "out": "experiments/benchmark_multiplexer_vs_baselines/ablation_results.json"
+  },
+  "results": [
+    {
+      "arch": "GTMGammaOnlyBridge",
+      "seed": 0,
+      "train_loss_final": 0.5509292483329773,
+      "round_trip_fidelity": 0.7504250381949878,
+      "mi_h": 1.142102243552018,
+      "bandwidth_efficiency": 0.1875,
+      "n_params": 17888,
+      "train_time_s": 15.984003752004355
+    },
+    {
+      "arch": "GTMGammaOnlyBridge",
+      "seed": 17,
+      "train_loss_final": 0.5116349458694458,
+      "round_trip_fidelity": 0.6835450494887487,
+      "mi_h": 1.0271521816938662,
+      "bandwidth_efficiency": 0.1875,
+      "n_params": 17888,
+      "train_time_s": 15.71733391401358
+    },
+    {
+      "arch": "GTMGammaOnlyBridge",
+      "seed": 42,
+      "train_loss_final": 0.5612844824790955,
+      "round_trip_fidelity": 0.7389551346249881,
+      "mi_h": 1.1683425767382407,
+      "bandwidth_efficiency": 0.1875,
+      "n_params": 17888,
+      "train_time_s": 16.810049065039493
+    },
+    {
+      "arch": "GTMGammaOnlyBridge",
+      "seed": 73,
+      "train_loss_final": 0.5468180179595947,
+      "round_trip_fidelity": 0.6346892058404632,
+      "mi_h": 1.0870411742934016,
+      "bandwidth_efficiency": 0.1875,
+      "n_params": 17888,
+      "train_time_s": 16.55955929902848
+    },
+    {
+      "arch": "GTMGammaOnlyBridge",
+      "seed": 101,
+      "train_loss_final": 0.512539803981781,
+      "round_trip_fidelity": 0.6906832111655965,
+      "mi_h": 1.1977094358170461,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 16.089015196077526
+    },
+    {
+      "arch": "GTMThetaOnlyBridge",
+      "seed": 0,
+      "train_loss_final": 0.549147367477417,
+      "round_trip_fidelity": 0.7479936470139297,
+      "mi_h": 1.3111967730826966,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 14.007632603985257
+    },
+    {
+      "arch": "GTMThetaOnlyBridge",
+      "seed": 17,
+      "train_loss_final": 0.6164671182632446,
+      "round_trip_fidelity": 0.6556020774449197,
+      "mi_h": 1.059071784342521,
+      "bandwidth_efficiency": 0.1875,
+      "n_params": 17888,
+      "train_time_s": 13.134264714899473
+    },
+    {
+      "arch": "GTMThetaOnlyBridge",
+      "seed": 42,
+      "train_loss_final": 0.6053726673126221,
+      "round_trip_fidelity": 0.7133396760355701,
+      "mi_h": 1.2010126875418243,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 14.036299223080277
+    },
+    {
+      "arch": "GTMThetaOnlyBridge",
+      "seed": 73,
+      "train_loss_final": 0.6056314706802368,
+      "round_trip_fidelity": 0.5765366858279093,
+      "mi_h": 1.1671597160967462,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 13.48812331201043
+    }
+  ]
+}

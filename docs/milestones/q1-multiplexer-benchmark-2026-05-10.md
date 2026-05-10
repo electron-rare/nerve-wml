@@ -57,3 +57,72 @@ CrossAttentionBridge), Bonferroni-corrected at α=0.05/9 ≈ 0.0056.
 If Q2 finds ≥3 FPs in Conformance Criterion, Paper 2 §X.Y narrative
 must additionally widen to "GTM in framework C+ (extended criterion)"
 — annotated in the closeout.
+
+## Result (executed 2026-05-10)
+
+Sweep ran on electron-server CPU (8-core x86_64), wallclock <5 min total
+(20 runs at ~3-17s each).
+
+| Arch | rtf mean | mi_h mean | bw_eff mean | params | wallclock/run |
+|------|----------|-----------|-------------|--------|----------------|
+| GTM | 0.6868 | 1.1971 | 0.1375 | 17888 | 16.69 s |
+| RecursiveLink | 0.9908 | 0.3962 | 0.8875 | 4256 | 3.29 s |
+| MLP | 0.9880 | 0.4298 | 0.8250 | 4256 | 3.12 s |
+| CrossAttn | 0.4775 | 1.0845 | 0.2625 | 800 | 3.35 s |
+
+### Welch's t-test pairwise (Bonferroni α = 0.0056)
+
+```
+RecursiveLinkBridge   round_trip_fidelity   t=-10.61 p=4.46e-04 GTM=0.6868 base=0.9908 -> loss
+RecursiveLinkBridge   mi_h                  t=+30.32 p=3.17e-08 GTM=1.1971 base=0.3962 -> win
+RecursiveLinkBridge   bandwidth_efficiency  t=-42.43 p=1.05e-10 GTM=0.1375 base=0.8875 -> loss
+MLPBridge             round_trip_fidelity   t=-10.47 p=4.29e-04 GTM=0.6868 base=0.9880 -> loss
+MLPBridge             mi_h                  t=+21.06 p=4.88e-08 GTM=1.1971 base=0.4298 -> win
+MLPBridge             bandwidth_efficiency  t=-38.89 p=2.10e-10 GTM=0.1375 base=0.8250 -> loss
+CrossAttentionBridge  round_trip_fidelity   t= +6.15 p=5.20e-04 GTM=0.6868 base=0.4775 -> win
+CrossAttentionBridge  mi_h                  t= +1.52 p=1.91e-01 GTM=1.1971 base=1.0845 -> tie
+CrossAttentionBridge  bandwidth_efficiency  t= -7.07 p=1.05e-04 GTM=0.1375 base=0.2625 -> loss
+```
+
+GTM wins: 3/9, losses: 5/9, ties: 1/9.
+
+### Verdict
+
+**`tied`** per pre-stated decision criteria (3 wins, neither ≥6 wins nor
+≥6 losses). GTM dominates on `mi_h` (information per code unit) against
+the two latent-space baselines and matches CrossAttention on the same
+metric. Latent-space baselines dominate on round-trip and bandwidth
+efficiency. Paper 2 §X.Y reframes as **convergent evidence**: GTM
+matches latent-space methods on aggregate while preserving phase-coupled
+biological plausibility, with stronger MI per code unit.
+
+### Ablation (T14, partial — 2/3 ablations, n=5 except theta_only n=4)
+
+| Ablation | rtf | mi_h | bw_eff |
+|---|---|---|---|
+| GTMGammaOnly | 0.6997 | 1.1245 | 0.1750 |
+| GTMThetaOnly | 0.6734 | 1.1846 | 0.1406 |
+
+Both single-band ablations land near the full GTM (rtf ≈0.69, mi_h
+≈1.15-1.18) — preliminary signal that γ⊗θ multiplexing structure is
+not load-bearing for HardFlowProxyTask N=2 ; phase coupling adds
+robustness rather than capacity. **GTMNoPlasticity** ablation pending
+T14 sweep completion (T16 will refresh and reanalyse).
+
+### Soft-gate from Q2
+
+Q2 outcome was `ge_3_FP_reformulate` (confirmed 2026-05-10 in
+dream-of-kiki commit 6ff8320). Per pre-registration the Paper 2 §X.Y
+narrative widens to "GTM in framework C+ (extended Conformance
+Criterion, requires C2 substrate-specific axiom property tests in
+addition to structural invariants)".
+
+### Figure
+
+`papers/paper2/figures/multiplexer_benchmark.png` (3-panel bar chart
+with SEM error bars, GTM + 3 baselines + 2 ablations).
+
+### Paper 2 update
+
+dream-of-kiki commit (see git log) updated `docs/papers/paper2/outline.md`
+with the verdict narrative.
