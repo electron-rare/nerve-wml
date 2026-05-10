@@ -117,6 +117,7 @@ class GammaThetaMultiplexer(nn.Module):
 
     constellation: nn.Parameter
     _t_grid: Tensor
+    plasticity_step: Tensor
 
     def __init__(
         self,

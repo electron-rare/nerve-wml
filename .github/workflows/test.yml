@@ -40,13 +40,8 @@ jobs:
       - name: Lint (ruff check, full repo)
         run: uv run ruff check .
 
-      # Mypy scoped to nerve_core only on first pass.
-      # Pre-existing debt: 5 errors in track_p/multiplexer.py
-      # (Tensor | Module union confusion around plasticity_step).
-      # TODO(N3): fix and broaden to `nerve_core track_p` per
-      # canonical command in CLAUDE.md.
-      - name: Type-check (mypy, scoped to nerve_core)
-        run: uv run mypy nerve_core
+      - name: Type-check (mypy, full source)
+        run: uv run mypy nerve_core track_p track_w
 
       # Excludes the `slow` marker. No coverage gate (no
       # --cov-fail-under set in pyproject).

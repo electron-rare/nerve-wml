@@ -30,6 +30,8 @@ from nerve_core.protocols import Nerve
 class TransformerWML(nn.Module):
     """WML with a Transformer encoder core + independent π/ε emission heads."""
 
+    input_proj: nn.Linear | None
+
     def __init__(
         self,
         id:            int,

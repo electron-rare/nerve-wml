@@ -60,8 +60,8 @@ jobs:
       - name: Lint (ruff check, scoped to nerve_core)
         run: uv run ruff check nerve_core
 
-      - name: Type-check (mypy, scoped to nerve_core)
-        run: uv run mypy nerve_core
+      - name: Type-check (mypy, full source)
+        run: uv run mypy nerve_core track_p track_w
 
       - name: Test (pytest, exclude slow)
         run: uv run pytest -m "not slow" --no-cov
