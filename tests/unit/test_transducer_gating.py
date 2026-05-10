@@ -15,7 +15,6 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from tests.conftest import LINUX_CI_312  # noqa: E402 — gated by importorskip above
 from track_p.transducer import (  # noqa: E402 — gated by importorskip above
     Transducer,
     TransducerGating,
@@ -78,20 +77,25 @@ def test_gumbel_softmax_returns_soft_distribution():
     assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5)
 
 
-@pytest.mark.xfail(
-    LINUX_CI_312,
-    reason=(
-        "Platform-dependent: torch autograd Gumbel softmax gradient "
-        "flow differs on Linux/Py3.12 — t.logits.grad.abs().sum() "
-        "== 0 instead of nonzero. Tracked for N3 plan."
-    ),
-    strict=False,
-)
 def test_gumbel_softmax_is_differentiable():
-    """Gradient must flow back into the transducer logits via the soft path."""
+    """Gradient must flow back into the transducer logits via the soft path.
+
+    History: N2 Task 4 xfail'd this on Linux/Py3.12 CI because a stray
+    ``torch.set_grad_enabled(False)`` from an earlier test/fixture in
+    the same module session leaked into this test only on the Linux
+    runner (test ordering differed slightly under pytest-xdist-free
+    serial execution). N3 Task 9 (2026-05-10) fixes this defensively
+    by guarding the test with ``torch.set_grad_enabled(True)`` and
+    asserting that the autograd graph is properly attached before
+    backward — both prevent the symptom and surface the cause.
+    """
+    torch.set_grad_enabled(True)
     torch.manual_seed(0)
     t = Transducer(alphabet_size=_ALPHABET, gating=TransducerGating.GUMBEL_SOFTMAX)
+    assert t.logits.requires_grad
     out = t.forward(_src())
+    assert out.requires_grad, "soft path must produce a grad-tracked tensor"
+    assert out.grad_fn is not None, "autograd graph broken before backward"
     loss = out.sum()
     loss.backward()
     assert t.logits.grad is not None
