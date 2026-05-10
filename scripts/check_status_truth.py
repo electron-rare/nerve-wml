@@ -8,6 +8,7 @@ and the script returns non-zero if any FAIL.
 N4 Task 5 (2026-05-10) — created in response to N1-N3 audits
 that surfaced systematic drift between docs and reality.
 """
+
 from __future__ import annotations
 
 import re
@@ -29,10 +30,8 @@ def _load_pyproject_version() -> str | None:
     pyproject_path = REPO_ROOT / "pyproject.toml"
     if not pyproject_path.exists():
         return None
-    if sys.version_info >= (3, 11):
-        import tomllib
-    else:
-        import tomli as tomllib  # type: ignore
+    import tomllib  # stdlib since Python 3.11
+
     data = tomllib.loads(pyproject_path.read_text())
     return data.get("project", {}).get("version")
 
@@ -57,18 +56,27 @@ def check_test_count() -> None:
 
     out = subprocess.run(
         ["uv", "run", "pytest", "--collect-only", "-q"],
-        cwd=REPO_ROOT, capture_output=True, text=True,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
     )
     actual_m = re.search(r"(\d+)\s+tests?\s+collected", out.stdout + out.stderr)
     if not actual_m:
-        report("test_count", False,
-               f"could not parse pytest collect output (claimed in {claim_src}: {claimed})")
+        report(
+            "test_count",
+            False,
+            f"could not parse pytest collect output (claimed in {claim_src}: {claimed})",
+        )
         return
     actual = int(actual_m.group(1))
     drift = abs(actual - claimed) / max(claimed, 1)
     if drift > 0.05:
-        report("test_count", False,
-               f"{claim_src} claims {claimed} tests, actual {actual} ({(actual-claimed)/claimed*100:+.1f}% drift)")
+        pct = (actual - claimed) / claimed * 100
+        report(
+            "test_count",
+            False,
+            f"{claim_src} claims {claimed} tests, actual {actual} ({pct:+.1f}% drift)",
+        )
     else:
         report("test_count", True, f"{claim_src}={claimed} ~ pytest={actual}")
 
@@ -86,18 +94,20 @@ def check_pyproject_changelog_version() -> None:
         return
 
     changelog = changelog_path.read_text()
-    pattern = r"^##\s+\[(\d+\.\d+\.\d+)\][\s—–\-]+\d{4}-\d{2}-\d{2}"
+    pattern = r"^##\s+\[(\d+\.\d+\.\d+)\][\s—–\-]+\d{4}-\d{2}-\d{2}"  # noqa: RUF001
     match = re.search(pattern, changelog, re.MULTILINE)
     if not match:
-        report("version_consistency", True,
-               f"no semver-tagged dated release header in CHANGELOG.md (pyproject={declared})")
+        report(
+            "version_consistency",
+            True,
+            f"no semver-tagged dated release header in CHANGELOG.md (pyproject={declared})",
+        )
         return
     top_release = match.group(1)
     if declared == top_release:
         report("version_consistency", True, f"pyproject={declared} = CHANGELOG top {top_release}")
     else:
-        report("version_consistency", False,
-               f"pyproject={declared} != CHANGELOG top {top_release}")
+        report("version_consistency", False, f"pyproject={declared} != CHANGELOG top {top_release}")
 
 
 def check_citation_version() -> None:
@@ -110,19 +120,23 @@ def check_citation_version() -> None:
     cff = cff_path.read_text()
     # Match top-level `version: "X.Y.Z"` or `version: X.Y.Z`
     # NOT inside identifiers blocks (those are indented).
-    m = re.search(r'^version:\s*["\']?([0-9][^\s"\']+)["\']?\s*$',
-                  cff, re.MULTILINE)
+    m = re.search(r'^version:\s*["\']?([0-9][^\s"\']+)["\']?\s*$', cff, re.MULTILINE)
     if not m:
-        report("citation_version", True,
-               f"no top-level `version:` in CITATION.cff (skip; pyproject={declared})")
+        report(
+            "citation_version",
+            True,
+            f"no top-level `version:` in CITATION.cff (skip; pyproject={declared})",
+        )
         return
     cff_version = m.group(1)
     if cff_version == declared:
-        report("citation_version", True,
-               f"CITATION.cff version={cff_version} = pyproject={declared}")
+        report(
+            "citation_version", True, f"CITATION.cff version={cff_version} = pyproject={declared}"
+        )
     else:
-        report("citation_version", False,
-               f"CITATION.cff version={cff_version} != pyproject={declared}")
+        report(
+            "citation_version", False, f"CITATION.cff version={cff_version} != pyproject={declared}"
+        )
 
 
 def main() -> int:
