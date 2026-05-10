@@ -109,6 +109,66 @@
       "bandwidth_efficiency": 0.125,
       "n_params": 17888,
       "train_time_s": 13.48812331201043
+    },
+    {
+      "arch": "GTMThetaOnlyBridge",
+      "seed": 101,
+      "train_loss_final": 0.5168603658676147,
+      "round_trip_fidelity": 0.6895403139915531,
+      "mi_h": 1.2784136188427573,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 14.015078173950315
+    },
+    {
+      "arch": "GTMNoPlasticityBridge",
+      "seed": 0,
+      "train_loss_final": 0.5247170925140381,
+      "round_trip_fidelity": 0.7552880408450221,
+      "mi_h": 1.237335711461343,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 23.910933102015406
+    },
+    {
+      "arch": "GTMNoPlasticityBridge",
+      "seed": 17,
+      "train_loss_final": 0.5681970119476318,
+      "round_trip_fidelity": 0.6727377612405687,
+      "mi_h": 1.1314605914934635,
+      "bandwidth_efficiency": 0.1875,
+      "n_params": 17888,
+      "train_time_s": 21.072360808961093
+    },
+    {
+      "arch": "GTMNoPlasticityBridge",
+      "seed": 42,
+      "train_loss_final": 0.5833009481430054,
+      "round_trip_fidelity": 0.7279369854083261,
+      "mi_h": 1.2340887888819596,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 15.869365916005336
+    },
+    {
+      "arch": "GTMNoPlasticityBridge",
+      "seed": 73,
+      "train_loss_final": 0.5933452248573303,
+      "round_trip_fidelity": 0.5876757285254657,
+      "mi_h": 1.1526463430427687,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 16.511319409008138
+    },
+    {
+      "arch": "GTMNoPlasticityBridge",
+      "seed": 101,
+      "train_loss_final": 0.5183764100074768,
+      "round_trip_fidelity": 0.6901332248769585,
+      "mi_h": 1.2301062472122704,
+      "bandwidth_efficiency": 0.125,
+      "n_params": 17888,
+      "train_time_s": 17.86782128806226
     }
   ]
 }
