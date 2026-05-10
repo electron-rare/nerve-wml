@@ -2,6 +2,39 @@
 
 All notable changes to `nerve-wml` follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] — 2026-05-10
+
+Patch release. No code change. Triggers Zenodo version-DOI mintage
+for the v1.8.0 axioms-axis integration via the GitHub-Zenodo webhook
+that previously fired with stale v1.2.0 metadata.
+
+### Changed
+
+- `.zenodo.json` description and keywords refreshed to match the
+  actual v1.8.0 release content (axioms-axis integration,
+  GammaThetaMultiplexer, DR-2 weakened predicate consumption).
+  Adds `version` and `publication_date` fields.
+
+### Added
+
+- Nested `CLAUDE.md` files under `scripts/` and `tests/` for
+  Claude Code progressive disclosure (improves agent context
+  efficiency when working in subtrees).
+- `tests/golden/README.md` documenting the >100 MB fixture pattern
+  (regenerated locally or pulled from Zenodo, never committed —
+  GitHub rejects files above 100 MB).
+- Append-only superpowers planning notes for the v1.7.0 paper
+  review and the v1.8.0 axioms integration.
+
+### Notes
+
+- Companion to dream-of-kiki Paper 2 outline re-spec
+  (commit `55ca274` on `hypneum-lab/dream-of-kiki`, 2026-05-10).
+- Defensive antecedence: this version-DOI provides the immutable
+  timestamp for the GammaThetaMultiplexer (master commit
+  `77efb4d`, merged 2026-04-20) relative to RecursiveMAS
+  (arXiv:2604.25917, 2026-04-28).
+
 ## [1.8.0] — 2026-04-24
 
 Axioms-axis integration with `dream-of-kiki`. `kiki_oniric.axioms.DR0..DR4`
