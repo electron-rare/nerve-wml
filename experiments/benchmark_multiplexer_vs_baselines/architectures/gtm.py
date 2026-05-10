@@ -1,27 +1,39 @@
-"""GTMBridge — wraps track_p.multiplexer.GammaThetaMultiplexer.
+"""GTMBridge — real wire-through of GammaThetaMultiplexer.
 
-GTM's native forward signature operates on long-typed code tensors
-[B, K] and returns a [B, T] PAC carrier waveform — it is not a
-[B, dim] -> [B, code_dim] map. To bridge HardFlowProxyTask's
-[B, dim] continuous tensors to GTM's symbol-code interface, this
-wrapper uses learned linear projections on each side (encode_proj,
-decode_proj) — the same trick RecursiveLinkBridge applies. The
-underlying GammaThetaMultiplexer module is instantiated and held
-on the bridge so its parameters (constellation, plasticity hooks)
-are visible to optimisers ; full wire-through of the symbol-code
-path is deferred to Task 13 where the runner can quantise codes
-and pass them through GTM.forward proper.
+Replaces the Task 12 linear-only stand-in. The bridge maps
+[B, dim] continuous tensors through the discrete GTM channel:
+
+    encode(x):
+      1. Linear x -> logits[B, K, A]
+      2. Gumbel-softmax hard one-hot (straight-through gradient)
+      3. argmax -> indices[B, K] long for gtm.forward
+      4. carrier[B, T] = gtm(indices)        — real PAC waveform
+      5. soft_iq[B, K, 2] = one_hot @ constellation
+         (parallel ST path so gradient reaches encode_logits and
+          constellation through the soft side; the waveform path
+          carries gradient through the constellation as well)
+      6. concat(pool(carrier), flatten(soft_iq)) -> linear -> code
+
+    decode(code): symmetric.
+
+This keeps the GTM channel on the critical path (constellation
+parameter is in the autograd graph, plasticity hook still active)
+while preserving end-to-end differentiability through the discrete
+quantization step. Q1 benchmark per
+HYPNEUM-PLANS/2026-05-10-niveau8-three-experiments.md Task 13.
 """
 from __future__ import annotations
 
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch import Tensor
 
 from track_p.multiplexer import GammaThetaConfig, GammaThetaMultiplexer
 
 
 class GTMBridge(nn.Module):
-    """GTM with input/output linear adapters for [B, dim] tensors."""
+    """GTM with discrete quantization + straight-through gradient."""
 
     def __init__(
         self,
@@ -30,19 +42,76 @@ class GTMBridge(nn.Module):
         *,
         seed: int | None = None,
         cfg: GammaThetaConfig | None = None,
+        gumbel_tau: float = 1.0,
     ) -> None:
         super().__init__()
+        if seed is not None:
+            torch.manual_seed(seed)
         self.dim = dim
         self.code_dim = code_dim
-        self.encode_proj = nn.Linear(dim, code_dim)
-        self.decode_proj = nn.Linear(code_dim, dim)
-        self.gtm = GammaThetaMultiplexer(cfg=cfg, seed=seed)
+        self.gumbel_tau = gumbel_tau
+        self.cfg = cfg if cfg is not None else GammaThetaConfig()
+        self.gtm = GammaThetaMultiplexer(cfg=self.cfg, seed=seed)
+        self.alphabet_size = self.cfg.alphabet_size            # 64
+        self.k_symbols = self.cfg.symbols_per_theta            # 7
+
+        # encode side: x -> per-symbol logits over alphabet
+        self.encode_logits = nn.Linear(
+            dim, self.k_symbols * self.alphabet_size
+        )
+        # waveform pooled to a fixed length, then mixed with soft IQ
+        self.waveform_pool_dim = 64
+        self.encode_mix = nn.Linear(
+            self.waveform_pool_dim + self.k_symbols * 2, code_dim
+        )
+
+        # decode side: symmetric
+        self.decode_logits = nn.Linear(
+            code_dim, self.k_symbols * self.alphabet_size
+        )
+        self.decode_mix = nn.Linear(
+            self.waveform_pool_dim + self.k_symbols * 2, dim
+        )
+
+    # ------------------------------------------------------------ helpers
+
+    def _gtm_pass(self, logits: Tensor) -> tuple[Tensor, Tensor]:
+        """logits[B,K,A] -> (pooled_waveform[B,P], soft_iq_flat[B,K*2]).
+
+        Gumbel-softmax hard gives one-hot with straight-through
+        gradient. The hard indices feed the real GTM forward (waveform
+        path; gradient flows into constellation). The soft one-hot is
+        also matmul'd against the constellation directly to push
+        gradient back into encode_logits / decode_logits.
+        """
+        one_hot = F.gumbel_softmax(logits, tau=self.gumbel_tau, hard=True)
+        # one_hot: [B, K, A] — argmax-equal forward, soft backward.
+        indices = one_hot.argmax(dim=-1)            # [B, K] long
+        carrier = self.gtm(indices)                 # [B, T]
+        pooled = F.adaptive_avg_pool1d(
+            carrier.unsqueeze(1), self.waveform_pool_dim
+        ).squeeze(1)                                # [B, P]
+        soft_iq = one_hot @ self.gtm.constellation  # [B, K, 2]
+        soft_iq_flat = soft_iq.flatten(1)           # [B, K*2]
+        return pooled, soft_iq_flat
+
+    # ------------------------------------------------------------ public
 
     def encode(self, x: Tensor) -> Tensor:
-        return self.encode_proj(x)
+        B = x.size(0)
+        logits = self.encode_logits(x).view(
+            B, self.k_symbols, self.alphabet_size
+        )
+        pooled, soft_iq = self._gtm_pass(logits)
+        return self.encode_mix(torch.cat([pooled, soft_iq], dim=-1))
 
     def decode(self, code: Tensor) -> Tensor:
-        return self.decode_proj(code)
+        B = code.size(0)
+        logits = self.decode_logits(code).view(
+            B, self.k_symbols, self.alphabet_size
+        )
+        pooled, soft_iq = self._gtm_pass(logits)
+        return self.decode_mix(torch.cat([pooled, soft_iq], dim=-1))
 
     def forward(self, x: Tensor) -> Tensor:
         return self.decode(self.encode(x))
