@@ -1,0 +1,60 @@
+name: test
+
+# Gates every PR + master push on lint + type + tests, so the next
+# metadata-drift bug like the one fixed in v1.8.1's [Unreleased]
+# CHANGELOG cannot ship to PyPI uncaught (publish.yml has no
+# precondition on test results today).
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      # Lint scoped to nerve_core only on first pass.
+      # Pre-existing debt outside nerve_core (counts at workflow
+      # introduction, 2026-05-10): 1 in track_p, 3 in track_w,
+      # 12 in tests, 31 in scripts. TODO(N3): broaden scope as
+      # those dirs are cleaned. Mostly UP037 (PEP 604 quoted
+      # annotations) + a few E501 line-too-long.
+      - name: Lint (ruff check, scoped to nerve_core)
+        run: uv run ruff check nerve_core
+
+      # Mypy scoped to nerve_core only on first pass.
+      # Pre-existing debt: 5 errors in track_p/multiplexer.py
+      # (Tensor | Module union confusion around plasticity_step).
+      # TODO(N3): fix and broaden to `nerve_core track_p` per
+      # canonical command in CLAUDE.md.
+      - name: Type-check (mypy, scoped to nerve_core)
+        run: uv run mypy nerve_core
+
+      # Excludes the `slow` marker. No coverage gate (no
+      # --cov-fail-under set in pyproject).
+      - name: Test (pytest, exclude slow)
+        run: uv run pytest -m "not slow" --no-cov
