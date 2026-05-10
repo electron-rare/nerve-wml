@@ -2,6 +2,22 @@
 
 All notable changes to `nerve-wml` follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `tests/unit/test_pyproject_axioms_extras.py` — replaced
+  `test_version_is_1_8_0` (hardcoded literal that drifted on every
+  patch bump) with `test_version_matches_changelog_top_entry`, which
+  derives the assertion from `pyproject.toml` ↔ `CHANGELOG.md`
+  consistency. Tautological release-version literals are
+  release-process-fragile by design.
+- `tests/unit/test_readme_gates.py` — replaced
+  `test_readme_lists_paper_drafts` (asserted presence of obsolete
+  `paper-v0.3-draft` label) with `test_readme_links_to_paper_sources`,
+  which asserts structural file-path anchors that survive paper
+  reorganisation.
+
 ## [1.8.1] — 2026-05-10
 
 Patch release. No code change. Triggers Zenodo version-DOI mintage
