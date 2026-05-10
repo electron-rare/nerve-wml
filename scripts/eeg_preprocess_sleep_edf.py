@@ -30,11 +30,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import numpy as np
-
 import mne
+import numpy as np
 from mne.datasets import sleep_physionet
-
 
 SLEEP_STAGE_MAP = {
     "Sleep stage W": 0,
@@ -160,9 +158,12 @@ def main() -> None:
         x_tr, y_tr, x_va, y_va, x_te, y_te = _split_per_subject(
             epochs, labels, seed=subj_id,
         )
-        all_x_train.append(x_tr); all_y_train.append(y_tr)
-        all_x_val.append(x_va);   all_y_val.append(y_va)
-        all_x_test.append(x_te);  all_y_test.append(y_te)
+        all_x_train.append(x_tr)
+        all_y_train.append(y_tr)
+        all_x_val.append(x_va)
+        all_y_val.append(y_va)
+        all_x_test.append(x_te)
+        all_y_test.append(y_te)
         n_total_epochs += epochs.shape[0]
         print(
             f"  subject {subj_id}: {epochs.shape[0]} epochs "

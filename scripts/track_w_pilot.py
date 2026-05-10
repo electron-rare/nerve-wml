@@ -619,7 +619,7 @@ def run_w_triple_substrate(
 
     if hard:
         from track_w.tasks.hard_flow_proxy import HardFlowProxyTask
-        def make_task() -> "HardFlowProxyTask":
+        def make_task() -> HardFlowProxyTask:
             return HardFlowProxyTask(dim=16, n_classes=12, seed=seed)
     else:
         def make_task() -> FlowProxyTask:
@@ -657,11 +657,17 @@ def run_w_triple_substrate(
     x, y = task_eval.sample(batch=512)
     n_classes = task_eval.n_classes
     with torch.no_grad():
-        acc_mlp = (mlp.emit_head_pi(mlp.core(x))[:, :n_classes].argmax(-1) == y).float().mean().item()
+        acc_mlp = (
+            mlp.emit_head_pi(mlp.core(x))[:, :n_classes].argmax(-1) == y
+        ).float().mean().item()
         i_in = lif.input_proj(input_encoder(x))
         spikes = spike_with_surrogate(i_in, v_thr=lif.v_thr)
-        acc_lif = (lif.emit_head_pi(spikes)[:, :n_classes].argmax(-1) == y).float().mean().item()
-        acc_trf = (trf.emit_head_pi(trf.core(x))[:, :n_classes].argmax(-1) == y).float().mean().item()
+        acc_lif = (
+            lif.emit_head_pi(spikes)[:, :n_classes].argmax(-1) == y
+        ).float().mean().item()
+        acc_trf = (
+            trf.emit_head_pi(trf.core(x))[:, :n_classes].argmax(-1) == y
+        ).float().mean().item()
 
     accs = [acc_mlp, acc_lif, acc_trf]
     triple_gap = (max(accs) - min(accs)) / max(max(accs), 1e-6)

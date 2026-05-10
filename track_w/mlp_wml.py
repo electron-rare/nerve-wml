@@ -145,7 +145,7 @@ class MlpWML(nn.Module):
         target_carrier_dim: int = 16,
         *,
         seed: int | None = None,
-    ) -> "object":
+    ) -> object:
         """Build a spectrogram-based encoder for raw waveform input (issue #7).
 
         Returns a :class:`track_w.spectrogram.SpectrogramEncoder` callable as

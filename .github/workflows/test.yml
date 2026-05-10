@@ -37,14 +37,8 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras
 
-      # Lint scoped to nerve_core only on first pass.
-      # Pre-existing debt outside nerve_core (counts at workflow
-      # introduction, 2026-05-10): 1 in track_p, 3 in track_w,
-      # 12 in tests, 31 in scripts. TODO(N3): broaden scope as
-      # those dirs are cleaned. Mostly UP037 (PEP 604 quoted
-      # annotations) + a few E501 line-too-long.
-      - name: Lint (ruff check, scoped to nerve_core)
-        run: uv run ruff check nerve_core
+      - name: Lint (ruff check, full repo)
+        run: uv run ruff check .
 
       # Mypy scoped to nerve_core only on first pass.
       # Pre-existing debt: 5 errors in track_p/multiplexer.py

@@ -15,9 +15,11 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from tests.conftest import LINUX_CI_312
-from track_p.transducer import Transducer, TransducerGating
-
+from tests.conftest import LINUX_CI_312  # noqa: E402 — gated by importorskip above
+from track_p.transducer import (  # noqa: E402 — gated by importorskip above
+    Transducer,
+    TransducerGating,
+)
 
 _ALPHABET = 16
 
