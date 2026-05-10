@@ -112,6 +112,51 @@ def check_pyproject_changelog_version() -> None:
         report("version_consistency", False, f"pyproject={declared} != CHANGELOG top {top_release}")
 
 
+def check_version_py_consistency() -> None:
+    """pyproject.toml version matches src/<package>/_version.py.
+
+    N6 Task 2 (2026-05-10): caught by N5 Task 6 — bouba_sens had
+    pyproject 0.5.9 but _version.py 0.3.0 (4-minor stale).
+    doc-truth now covers this 4th version source.
+    """
+    declared = _load_pyproject_version()
+    if declared is None:
+        report("version_py_consistency", True, "no pyproject.toml version (skip)")
+        return
+
+    candidates = list(REPO_ROOT.glob("src/**/_version.py")) + list(REPO_ROOT.glob("*/_version.py"))
+    candidates = [c for c in candidates if ".venv" not in c.parts and "build" not in c.parts]
+    if not candidates:
+        report("version_py_consistency", True, "no _version.py (skip)")
+        return
+
+    version_file = candidates[0]
+    text = version_file.read_text()
+    m = re.search(r'__version__\s*=\s*["\']([\d.]+)["\']', text)
+    if not m:
+        report(
+            "version_py_consistency",
+            False,
+            f"no __version__ literal in {version_file.relative_to(REPO_ROOT)}",
+        )
+        return
+    file_ver = m.group(1)
+
+    if declared == file_ver:
+        report(
+            "version_py_consistency",
+            True,
+            f"pyproject={declared} = _version.py {file_ver}",
+        )
+    else:
+        report(
+            "version_py_consistency",
+            False,
+            f"pyproject={declared} != _version.py {file_ver} "
+            f"({version_file.relative_to(REPO_ROOT)})",
+        )
+
+
 def check_citation_version() -> None:
     """CITATION.cff top-level `version:` matches pyproject.toml version."""
     declared = _load_pyproject_version()
@@ -147,6 +192,7 @@ def main() -> int:
     print("=" * 60)
     check_test_count()
     check_pyproject_changelog_version()
+    check_version_py_consistency()
     check_citation_version()
     print("=" * 60)
     failed = [n for n, p, _ in results if not p]
