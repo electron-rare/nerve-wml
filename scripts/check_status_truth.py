@@ -14,10 +14,13 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 results: list[tuple[str, bool, str]] = []
+
+DRIFT_TOLERANCE = 0.05  # +/-5% on test-count claims
 
 
 def report(name: str, passed: bool, message: str) -> None:
@@ -30,8 +33,6 @@ def _load_pyproject_version() -> str | None:
     pyproject_path = REPO_ROOT / "pyproject.toml"
     if not pyproject_path.exists():
         return None
-    import tomllib  # stdlib since Python 3.11
-
     data = tomllib.loads(pyproject_path.read_text())
     return data.get("project", {}).get("version")
 
@@ -59,6 +60,7 @@ def check_test_count() -> None:
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
+        check=False,
     )
     actual_m = re.search(r"(\d+)\s+tests?\s+collected", out.stdout + out.stderr)
     if not actual_m:
@@ -70,7 +72,7 @@ def check_test_count() -> None:
         return
     actual = int(actual_m.group(1))
     drift = abs(actual - claimed) / max(claimed, 1)
-    if drift > 0.05:
+    if drift > DRIFT_TOLERANCE:
         pct = (actual - claimed) / claimed * 100
         report(
             "test_count",
