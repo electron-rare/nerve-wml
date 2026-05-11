@@ -24,202 +24,202 @@
     {
       "arch": "GTMBridge",
       "seed": 0,
-      "train_loss_final": 0.5247170925140381,
-      "round_trip_fidelity": 0.7552880408450221,
-      "mi_h": 1.237335711461343,
+      "train_loss_final": 0.5330237150192261,
+      "round_trip_fidelity": 0.753855508513805,
+      "mi_h": 1.2432501914717586,
       "bandwidth_efficiency": 0.125,
       "n_params": 17888,
-      "train_time_s": 16.347962368978187
+      "train_time_s": 2.0953419539146125
     },
     {
       "arch": "GTMBridge",
       "seed": 17,
-      "train_loss_final": 0.5681970119476318,
-      "round_trip_fidelity": 0.6727377612405687,
-      "mi_h": 1.1314605914934635,
+      "train_loss_final": 0.5655182003974915,
+      "round_trip_fidelity": 0.6707475298782859,
+      "mi_h": 1.1241394706151004,
       "bandwidth_efficiency": 0.1875,
       "n_params": 17888,
-      "train_time_s": 16.133160572964698
+      "train_time_s": 3.762734069954604
     },
     {
       "arch": "GTMBridge",
       "seed": 42,
-      "train_loss_final": 0.5833009481430054,
-      "round_trip_fidelity": 0.7279369854083261,
-      "mi_h": 1.2340887888819596,
+      "train_loss_final": 0.5915839672088623,
+      "round_trip_fidelity": 0.7237158025718835,
+      "mi_h": 1.2518265035390115,
       "bandwidth_efficiency": 0.125,
       "n_params": 17888,
-      "train_time_s": 17.22765310201794
+      "train_time_s": 2.082049136981368
     },
     {
       "arch": "GTMBridge",
       "seed": 73,
-      "train_loss_final": 0.5933452248573303,
-      "round_trip_fidelity": 0.5876757285254657,
-      "mi_h": 1.1526463430427687,
+      "train_loss_final": 0.5969066619873047,
+      "round_trip_fidelity": 0.5838365446833274,
+      "mi_h": 1.1397415351921625,
       "bandwidth_efficiency": 0.125,
       "n_params": 17888,
-      "train_time_s": 17.08214167796541
+      "train_time_s": 3.856730309082195
     },
     {
       "arch": "GTMBridge",
       "seed": 101,
-      "train_loss_final": 0.5183764100074768,
-      "round_trip_fidelity": 0.6901332248769585,
-      "mi_h": 1.2301062472122704,
+      "train_loss_final": 0.5372536778450012,
+      "round_trip_fidelity": 0.6842541550056547,
+      "mi_h": 1.2325982513155838,
       "bandwidth_efficiency": 0.125,
       "n_params": 17888,
-      "train_time_s": 16.666862298967317
+      "train_time_s": 2.129311013966799
     },
     {
       "arch": "RecursiveLinkBridge",
       "seed": 0,
-      "train_loss_final": 0.022128717973828316,
+      "train_loss_final": 0.022128723561763763,
       "round_trip_fidelity": 0.9911640753758288,
       "mi_h": 0.44129404159169205,
       "bandwidth_efficiency": 0.875,
       "n_params": 4256,
-      "train_time_s": 3.214422976016067
+      "train_time_s": 0.7234041760675609
     },
     {
       "arch": "RecursiveLinkBridge",
       "seed": 17,
-      "train_loss_final": 0.018671926110982895,
-      "round_trip_fidelity": 0.9894121527506796,
+      "train_loss_final": 0.018671881407499313,
+      "round_trip_fidelity": 0.9894121752284006,
       "mi_h": 0.38121869132523223,
       "bandwidth_efficiency": 0.875,
       "n_params": 4256,
-      "train_time_s": 3.266616114997305
+      "train_time_s": 0.2825055019930005
     },
     {
       "arch": "RecursiveLinkBridge",
       "seed": 42,
-      "train_loss_final": 0.019946711137890816,
+      "train_loss_final": 0.01994672231376171,
       "round_trip_fidelity": 0.9908106767414612,
       "mi_h": 0.3998322355532965,
       "bandwidth_efficiency": 0.875,
       "n_params": 4256,
-      "train_time_s": 3.532633542083204
+      "train_time_s": 0.2863175349775702
     },
     {
       "arch": "RecursiveLinkBridge",
       "seed": 73,
-      "train_loss_final": 0.010964340530335903,
-      "round_trip_fidelity": 0.9914765643417796,
+      "train_loss_final": 0.010964336805045605,
+      "round_trip_fidelity": 0.9914765649669594,
       "mi_h": 0.3598914444419282,
       "bandwidth_efficiency": 0.875,
       "n_params": 4256,
-      "train_time_s": 3.1922036219621077
+      "train_time_s": 0.2804343069437891
     },
     {
       "arch": "RecursiveLinkBridge",
       "seed": 101,
-      "train_loss_final": 0.013390718959271908,
-      "round_trip_fidelity": 0.9913292043272419,
+      "train_loss_final": 0.013390720821917057,
+      "round_trip_fidelity": 0.9913292037953649,
       "mi_h": 0.3986364277473729,
       "bandwidth_efficiency": 0.9375,
       "n_params": 4256,
-      "train_time_s": 3.243734495015815
+      "train_time_s": 0.28564014681614935
     },
     {
       "arch": "MLPBridge",
       "seed": 0,
-      "train_loss_final": 0.029389720410108566,
-      "round_trip_fidelity": 0.9853443255829581,
+      "train_loss_final": 0.02938971295952797,
+      "round_trip_fidelity": 0.9853443347616214,
       "mi_h": 0.4997894449658767,
       "bandwidth_efficiency": 0.8125,
       "n_params": 4256,
-      "train_time_s": 2.377807673998177
+      "train_time_s": 0.2634257711470127
     },
     {
       "arch": "MLPBridge",
       "seed": 17,
-      "train_loss_final": 0.026699934154748917,
-      "round_trip_fidelity": 0.9848938363751384,
-      "mi_h": 0.4115281403501011,
+      "train_loss_final": 0.026695193722844124,
+      "round_trip_fidelity": 0.9849018575498709,
+      "mi_h": 0.41172573607015744,
       "bandwidth_efficiency": 0.8125,
       "n_params": 4256,
-      "train_time_s": 2.4715798610122874
+      "train_time_s": 0.26134209404699504
     },
     {
       "arch": "MLPBridge",
       "seed": 42,
-      "train_loss_final": 0.04656914994120598,
-      "round_trip_fidelity": 0.9809937026645432,
+      "train_loss_final": 0.0465690940618515,
+      "round_trip_fidelity": 0.9809937213002563,
       "mi_h": 0.47692294192186424,
       "bandwidth_efficiency": 0.8125,
       "n_params": 4256,
-      "train_time_s": 3.505552096059546
+      "train_time_s": 0.25592082692310214
     },
     {
       "arch": "MLPBridge",
       "seed": 73,
-      "train_loss_final": 0.006343798711895943,
-      "round_trip_fidelity": 0.9951916199945808,
-      "mi_h": 0.3364999316034003,
+      "train_loss_final": 0.0063434503972530365,
+      "round_trip_fidelity": 0.9951919278956085,
+      "mi_h": 0.3366471412853673,
       "bandwidth_efficiency": 0.875,
       "n_params": 4256,
-      "train_time_s": 3.621829987037927
+      "train_time_s": 0.25633253483101726
     },
     {
       "arch": "MLPBridge",
       "seed": 101,
       "train_loss_final": 0.009519195184111595,
-      "round_trip_fidelity": 0.993551770740035,
+      "round_trip_fidelity": 0.9935517702081581,
       "mi_h": 0.4240493483948728,
       "bandwidth_efficiency": 0.8125,
       "n_params": 4256,
-      "train_time_s": 3.640189144993201
+      "train_time_s": 0.2553310371004045
     },
     {
       "arch": "CrossAttentionBridge",
       "seed": 0,
-      "train_loss_final": 1.0426324605941772,
-      "round_trip_fidelity": 0.5133325297230082,
+      "train_loss_final": 1.0426323413848877,
+      "round_trip_fidelity": 0.5133325003512859,
       "mi_h": 1.198940608903719,
       "bandwidth_efficiency": 0.25,
       "n_params": 800,
-      "train_time_s": 3.1268853979418054
+      "train_time_s": 0.2674528530333191
     },
     {
       "arch": "CrossAttentionBridge",
       "seed": 17,
-      "train_loss_final": 0.878275990486145,
-      "round_trip_fidelity": 0.4543905822305164,
+      "train_loss_final": 0.8782762289047241,
+      "round_trip_fidelity": 0.4543904383731021,
       "mi_h": 1.0863199653792954,
       "bandwidth_efficiency": 0.25,
       "n_params": 800,
-      "train_time_s": 3.105562338954769
+      "train_time_s": 0.26823268411681056
     },
     {
       "arch": "CrossAttentionBridge",
       "seed": 42,
       "train_loss_final": 0.9839318990707397,
-      "round_trip_fidelity": 0.5282659937057208,
+      "round_trip_fidelity": 0.5282661129742849,
       "mi_h": 1.1994323237283642,
       "bandwidth_efficiency": 0.25,
       "n_params": 800,
-      "train_time_s": 3.3954283599741757
+      "train_time_s": 0.29469536803662777
     },
     {
       "arch": "CrossAttentionBridge",
       "seed": 73,
       "train_loss_final": 0.8606575727462769,
-      "round_trip_fidelity": 0.4331522599377773,
+      "round_trip_fidelity": 0.4331522999492814,
       "mi_h": 0.8171164999753093,
       "bandwidth_efficiency": 0.3125,
       "n_params": 800,
-      "train_time_s": 3.656652682926506
+      "train_time_s": 0.27181839011609554
     },
     {
       "arch": "CrossAttentionBridge",
       "seed": 101,
-      "train_loss_final": 0.9192677736282349,
-      "round_trip_fidelity": 0.45816080663657155,
+      "train_loss_final": 0.9192677140235901,
+      "round_trip_fidelity": 0.4581607385563229,
       "mi_h": 1.1208266087806456,
       "bandwidth_efficiency": 0.25,
       "n_params": 800,
-      "train_time_s": 3.4755534239811823
+      "train_time_s": 0.261029405053705
     }
   ]
 }
