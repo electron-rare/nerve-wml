@@ -109,6 +109,28 @@ not load-bearing for HardFlowProxyTask N=2 ; phase coupling adds
 robustness rather than capacity. **GTMNoPlasticity** ablation pending
 T14 sweep completion (T16 will refresh and reanalyse).
 
+**Honest narrative on the plasticity ablation (post-critic v2,
+2026-05-11).** The plasticity schedule's effect on outcomes is below
+the noise floor for this task and parameter count : the constellation
+is **128 of 17,888 trainable parameters (0.7 %)**, so scaling its
+gradient by a cosine schedule does not produce a measurable
+behavioural difference (Δ < 0.005 RTF, less than seed standard
+deviation : observed `GTM` vs `NoPlasticity` Δ = 0.0033 RTF ≈ 0.05
+seed-σ). This is a **negative result** consistent with the
+convergent-evidence framing : on HardFlowProxyTask, plasticity
+scheduling is **not load-bearing** — the discrete-channel structure
+(PSK alphabet + Gumbel quantization) drives the `mi_h` advantage,
+not the temporal modulation of constellation learning. The earlier
+"ablation now non-degenerate via cosine decay" framing (v1.4.0
+release notes, dropped 2026-05-11) was operationally a no-op : code
+paths differ, but the Linear-layer dynamics (99.3 % of params)
+dominate any measurable signal. A larger fraction of the model
+would need to participate in the schedule for the ablation to
+discriminate — we leave this as a methodological observation for
+future work (per-symbol learned embeddings, or a
+`constellation_lock_after` ablation with the constellation frozen
+mid-training).
+
 ### Soft-gate from Q2
 
 Q2 outcome was `ge_3_FP_reformulate` (confirmed 2026-05-10 in

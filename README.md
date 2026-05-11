@@ -37,9 +37,23 @@ scaling sprints, 1 critic-saver retract closed downstream
 
 Methodology lessons promoted to portfolio-wide discipline :
 multi-seed-first-class (single-seed claims are fragile, see `bouba_sens`
-N9 Q3 Retract evidence), ablation now non-degenerate via cosine
-plasticity, degenerate-metric handling in `analyse.py`, Cohen's d
-effect sizes added to verdict tables.
+N9 Q3 Retract evidence), degenerate-metric handling in `analyse.py`,
+Cohen's d effect sizes added to verdict tables, **honest reporting of
+underpowered ablations** (the cosine plasticity schedule's effect on
+GTM outcomes is below the noise floor for HardFlowProxyTask : the
+constellation is 128 of 17,888 trainable parameters (0.7 %), so
+scaling its gradient by a cosine schedule does not produce a measurable
+behavioural difference (Δ < 0.005 RTF, less than seed standard
+deviation). This is a **negative result** consistent with the
+convergent-evidence framing : on HardFlowProxyTask, plasticity
+scheduling is **not load-bearing** — the discrete-channel structure
+(PSK alphabet + Gumbel quantization) drives the `mi_h` advantage, not
+the temporal modulation of constellation learning. A larger fraction
+of the model would need to participate in the schedule for the
+ablation to discriminate ; we leave this as a methodological
+observation for future work, e.g. per-symbol learned embeddings, or a
+`constellation_lock_after` ablation with the constellation frozen
+mid-training).
 
 ---
 
