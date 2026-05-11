@@ -126,3 +126,13 @@ with SEM error bars, GTM + 3 baselines + 2 ablations).
 
 dream-of-kiki commit (see git log) updated `docs/papers/paper2/outline.md`
 with the verdict narrative.
+
+## Clarification 2026-05-11
+
+The pre-registration title references "HardFlowProxyTask N=2", and
+`results.json` records `n_classes: 12`. These are not in conflict :
+in nerve-wml convention, **N refers to N_BRIDGES** (the number of
+bridge instances trained on the task), while `n_classes=12` is the
+internal cardinality of the HardFlowProxyTask fixture (XOR-on-noise
+variant, fixed by the existing nerve-wml task definition). Both
+values are part of the locked Q1 setup.

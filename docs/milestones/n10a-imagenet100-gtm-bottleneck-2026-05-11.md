@@ -70,3 +70,27 @@ GTM as a feature-bottleneck between a frozen ResNet50 backbone and a learned lin
 ## Cross-reference
 
 Reproduction artefacts will live at `nerve-wml/experiments/imagenet100_gtm_bottleneck/`. Implementation in N10-A sprint (post-N9 closeout). Paper 2 §8 (new) will cite this milestone.
+
+## Pre-registration amendment 2026-05-11
+
+The original pre-registration above lists "β-VAE baseline: continuous
+Gaussian bottleneck with KL penalty β ∈ {0.1, 1.0}" as a single
+baseline, but the Bonferroni count (3 baselines × 5 metrics × 3
+code_dims = 45 comparisons, α_corrected = 0.05/45 ≈ 0.00111) treats
+β-VAE as one entry. With two β values it would actually be 4
+baselines / 60 comparisons / α ≈ 0.000833, which is inconsistent
+with the registered count.
+
+**Resolution (locked before any sweep starts):**
+
+- Fix β-VAE at **β = 1.0** (standard ELBO weighting, one baseline
+  entry).
+- Total baselines remain **3** (VQ-VAE, β-VAE β=1.0, dense
+  autoencoder), comparisons remain **45**, corrected α remains
+  **0.00111**.
+- The β=0.1 variant is dropped from N10-A pre-registration scope ;
+  it may reappear later as an exploratory sensitivity analysis,
+  reported separately and not credited toward the headline verdict.
+
+This amendment is append-only ; the original pre-registration above
+is preserved verbatim.
