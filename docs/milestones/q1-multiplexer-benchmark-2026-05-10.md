@@ -136,3 +136,51 @@ bridge instances trained on the task), while `n_classes=12` is the
 internal cardinality of the HardFlowProxyTask fixture (XOR-on-noise
 variant, fixed by the existing nerve-wml task definition). Both
 values are part of the locked Q1 setup.
+
+## Critic clarification 2026-05-11 — degenerate-metric handling
+
+The N8/N9 critic review flagged that `analyse.py` was applying
+Welch's t-test to zero-variance arms in the Q1++ FlowProxyTask
+condition, producing `t=-inf, p=0` (counted as "significant losses"
+for GTM on `bw_eff`). This was a CRITICAL finding : on the easier
+regime all four architectures collapse to a constant per-seed
+`bandwidth_efficiency` (GTM=0.125, baselines=0.1875), so Welch is
+mathematically undefined.
+
+`analyse.py` now :
+
+1. Pre-passes every (baseline, metric) pair and flags it as
+   *degenerate* if either GTM's or that baseline's per-seed
+   sample-std is below `1e-6`.
+2. Skips Welch entirely for degenerate pairs ; reports
+   descriptive means only ; lists the pair under
+   `degenerate_metrics` in the verdict JSON.
+3. Excludes degenerate pairs from win/loss/tie counts.
+4. Re-brackets the Bonferroni denominator to the *effective*
+   number of non-degenerate comparisons (Q1++ : 9 → 6 effective,
+   α=0.05/6≈0.0083).
+5. Adds Cohen's d (pooled-SD) to every non-degenerate test
+   record.
+6. Provides a `quadratic_concavity_test()` helper used by
+   `bouba_sens` Q3 (per critic MAJOR #4, inverted-U hypothesis).
+
+Re-run verdict counts (2026-05-11, post-refactor) :
+
+| Condition | Wins | Losses | Ties | Effective | Degenerate |
+|-----------|------|--------|------|-----------|------------|
+| Q1 base (HardFlowProxy N=2) | 3 | 5 | 1 | 9 | 0 |
+| Q1+ (HardFlowProxy N=16) | 3 | 5 | 1 | 9 | 0 |
+| Q1++ (FlowProxyTask 4-class) | 3 | 1 | 2 | 6 | 3 (all `bw_eff`) |
+
+The Q1 base and Q1+ verdicts are unchanged ; Q1++ moves from the
+previously-reported 3W/4L/2T (which silently included the three
+spurious `bw_eff` "losses") to **3W/1L/2T over 6 effective
+comparisons**. The `tied` verdict per pre-registration brackets is
+preserved across all three conditions — but the convergent-evidence
+narrative for Q1++ is materially stronger once the `bw_eff`
+quantization-collapse artefact is excluded rather than counted as
+a real loss.
+
+Paper 2 §7.9 EN/FR updated in dream-of-kiki commit (see git log).
+Artefacts : `papers/paper2/figures/q1_verdict.json`,
+`q1_verdict_n16.json`, `q1_verdict_q1plusplus.json`.
