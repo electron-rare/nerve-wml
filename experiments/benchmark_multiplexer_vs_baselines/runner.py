@@ -136,6 +136,12 @@ def train_one(
         optim.zero_grad()
         loss.backward()
         optim.step()
+        # Advance plasticity clock for any GTM-derived submodule so the
+        # cosine decay schedule actually progresses across training. A
+        # no-op for non-GTM archs.
+        gtm = getattr(model, "gtm", None)
+        if gtm is not None and hasattr(gtm, "step"):
+            gtm.step()
         last_loss = float(loss.item())
         if step % 100 == 0:
             print(
