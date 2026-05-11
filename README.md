@@ -9,6 +9,40 @@ Citation : each release is archived on Zenodo (concept DOI [10.5281/zenodo.19656
 
 Research engine that validates a discrete-code communication layer between heterogeneous neural modules (World Model Languages, or WMLs). Modules exchange **neuroletters** over a sparse learned topology, multiplexed on gamma/theta rhythms, and converted between local codebooks by per-edge transducers. The paper draft is at [`papers/paper1/main.tex`](papers/paper1/main.tex); the full spec is at [`docs/superpowers/specs/2026-04-18-nerve-wml-design.md`](docs/superpowers/specs/2026-04-18-nerve-wml-design.md).
 
+## 2026-05-11 milestones — N8 → N14 portfolio sprints
+
+Tonight's six-sprint push closed the GammaThetaMultiplexer (GTM) empirical
+arc and locked four scaling pre-registrations for future hardware sprints.
+Headline numbers below remain the v1.2.3 baseline ; the new work
+characterises the GTM contract envelope and shipped six critic-driven
+fixes (ablation void, degenerate-metric handling, Cat C honest framing,
+Jonckheere wrong test, β-VAE confound, paper/JSON count mismatch).
+
+| Sprint | Verdict / artifact | Notes |
+|---|---|---|
+| **N8 Q1** GTM benchmark (HardFlowProxyTask N=2) | **tied** (3W / 5L / 1T vs latent-space baselines) | mi_h dominance preserved across all 8 conditions |
+| **N9 Q1+** scaling N=16 | **tied-stable** (3W / 5L / 1T identical to N=2) | seed-stable across 5 seeds |
+| **N9 Q1++** FlowProxyTask 4-class | **tied-stable-cross-task** (3W / 1L / 2T post-degenerate-exclusion) | confirms tie generalises beyond HardFlow |
+| **N8 Q2** 15 adversarial substrates (Cat A/B/C) | **`ge_3_FP_reformulate`** | Conformance Criterion C+ now requires C2 axiom property tests in addition to structural invariants |
+| **N9 Q2+** Cat D modular / E replay-loop / F asymmetric (10 more) | **25 / 25 cumulative FP** | structural layer alone insufficient at 6 categories |
+| **N10-A / N10-C** | **pre-reg locked, deferred** | ImageNet-100 + ResNet50 + GTM bottleneck (β-VAE β=1.0 fixed per critic) ; Procgen multi-agent GTM communication |
+| **N11-A / N11-C** | **pre-reg locked, deferred** | I-JEPA + GTM predictor on ImageNet self-supervised ; Dreamer V3 + GTM dynamics on Atari-100k |
+| **N13 / N14** | **pre-reg locked, deferred** | OFAT GTM internals (5 hyperparams × 4-5 levels × 5 seeds) ; Latin Hypercube 7-dim coverage (50 points × 5 seeds) |
+
+Cumulative on master HEAD `7528ada` : **295 commits**, **v1.8.1** released
+on PyPI, 12 OSF-style pre-registrations across the Hypneum programme,
+7 verdicts shipped on the GTM axis, 5 pre-regs deferred to future
+scaling sprints, 1 critic-saver retract closed downstream
+(`bouba_sens` Q3+, see that repo's README).
+
+Methodology lessons promoted to portfolio-wide discipline :
+multi-seed-first-class (single-seed claims are fragile, see `bouba_sens`
+N9 Q3 Retract evidence), ablation now non-degenerate via cosine
+plasticity, degenerate-metric handling in `analyse.py`, Cohen's d
+effect sizes added to verdict tables.
+
+---
+
 ## Status — v1.8.0 (2026-04-24, on PyPI)
 
 Installable via `pip install nerve-wml`. For the real
