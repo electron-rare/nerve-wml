@@ -24,12 +24,40 @@ HYPNEUM-PLANS/2026-05-10-niveau8-three-experiments.md Task 13.
 """
 from __future__ import annotations
 
+import math
+from typing import Callable
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
 from track_p.multiplexer import GammaThetaConfig, GammaThetaMultiplexer
+
+# Sentinel: distinguish "user did not pass anything" (use cosine
+# decay default) from "user explicitly passed None" (no schedule).
+_USE_DEFAULT_SCHEDULE = object()
+
+
+def default_cosine_plasticity_schedule(
+    total_steps: int = 800,
+    floor: float = 0.1,
+) -> Callable[[int], float]:
+    """Cosine decay 1.0 -> ``floor`` over ``total_steps``, then clamped.
+
+    Used as the GTMBridge default so that the GTMNoPlasticity ablation
+    (which pins the schedule to constant 1.0) is meaningfully different
+    from the baseline GTM. Without this, both have a no-op plasticity
+    hook and the ablation is bit-identical to baseline.
+    """
+    span = max(int(total_steps), 1)
+    amplitude = 1.0 - floor
+
+    def _schedule(step: int) -> float:
+        s = min(max(int(step), 0), span)
+        return floor + amplitude * 0.5 * (1.0 + math.cos(math.pi * s / span))
+
+    return _schedule
 
 
 class GTMBridge(nn.Module):
@@ -43,6 +71,7 @@ class GTMBridge(nn.Module):
         seed: int | None = None,
         cfg: GammaThetaConfig | None = None,
         gumbel_tau: float = 1.0,
+        plasticity_schedule: Callable[[int], float] | None = _USE_DEFAULT_SCHEDULE,  # type: ignore[assignment]
     ) -> None:
         super().__init__()
         if seed is not None:
@@ -51,7 +80,13 @@ class GTMBridge(nn.Module):
         self.code_dim = code_dim
         self.gumbel_tau = gumbel_tau
         self.cfg = cfg if cfg is not None else GammaThetaConfig()
-        self.gtm = GammaThetaMultiplexer(cfg=self.cfg, seed=seed)
+        if plasticity_schedule is _USE_DEFAULT_SCHEDULE:
+            plasticity_schedule = default_cosine_plasticity_schedule()
+        self.gtm = GammaThetaMultiplexer(
+            cfg=self.cfg,
+            seed=seed,
+            plasticity_schedule=plasticity_schedule,
+        )
         self.alphabet_size = self.cfg.alphabet_size            # 64
         self.k_symbols = self.cfg.symbols_per_theta            # 7
 
