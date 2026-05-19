@@ -303,3 +303,103 @@ class SimpleGatingMultiplexer(nn.Module):
         """`[B, n_symbols, alphabet_size]` logits — for training the read-out."""
         logits = self.readout(carrier)
         return logits.view(-1, self.n_symbols, self.alphabet_size)
+
+
+class KuramotoMultiplexer(nn.Module):
+    """Minimal AKOrN-style coupled-oscillator multiplexer.
+
+    Inspired by Miyato et al. (ICLR 2025, arXiv:2410.13821) Artificial
+    Kuramoto Oscillatory Neurons. Each of `n_oscillators` units has a
+    learned natural frequency and is coupled to every other through a
+    learned [N, N] coupling matrix. A stimulus code is written as a
+    phase-bias injection across a subset of oscillators (selected
+    deterministically by code bits, same trick as the simple gating
+    control). After `n_steps` of Euler integration of the Kuramoto
+    update, the terminal phase pattern is read out linearly to logits.
+
+    Provides the same `forward(codes) -> carrier` /
+    `demodulate(carrier) -> codes` contract as `SimpleGatingMultiplexer`
+    so the gtm ablation script can drop it in as a third arm.
+
+    Parameters
+    ----------
+    alphabet_size : int
+        Code alphabet size.
+    n_symbols : int
+        Code slots per carrier.
+    n_oscillators : int
+        Oscillator pool size (default 32; smaller = faster, less expressive).
+    n_steps : int
+        Default Euler-step count per forward (default 8).
+    dt : float
+        Integration step size (default 0.1).
+    """
+
+    def __init__(
+        self,
+        *,
+        alphabet_size: int = 64,
+        n_symbols: int = 7,
+        n_oscillators: int = 32,
+        n_steps: int = 8,
+        dt: float = 0.1,
+    ) -> None:
+        super().__init__()
+        self.alphabet_size = alphabet_size
+        self.n_symbols = n_symbols
+        self.n_oscillators = n_oscillators
+        self.n_steps = n_steps
+        self.dt = dt
+        # Learned natural frequencies, one per oscillator.
+        self.natural_freqs = nn.Parameter(
+            torch.randn(n_oscillators) * 0.5
+        )
+        # Learned coupling matrix [N, N]. Symmetric initialisation
+        # for stability; not enforced symmetric afterwards.
+        init_coupling = torch.randn(n_oscillators, n_oscillators) * 0.1
+        self.coupling = nn.Parameter(
+            0.5 * (init_coupling + init_coupling.T)
+        )
+        # Phase-bias injection: each code maps to a small fixed pattern
+        # of phase offsets across the oscillator pool, derived from the
+        # code bits — matches the SimpleGating idiom.
+        self.code_bias = nn.Parameter(
+            torch.randn(alphabet_size, n_oscillators) * 0.1
+        )
+        # Linear read-out: phase pattern -> per-symbol logits.
+        self.readout = nn.Linear(
+            n_oscillators, n_symbols * alphabet_size,
+        )
+
+    def forward(
+        self, codes: Tensor, *, n_steps: int | None = None,
+    ) -> Tensor:
+        """Encode `[B, n_symbols]` long codes to a `[B, n_oscillators]` carrier."""
+        if codes.shape[-1] != self.n_symbols:
+            raise ValueError(
+                f"expected {self.n_symbols} symbols, got {codes.shape[-1]}"
+            )
+        steps = n_steps if n_steps is not None else self.n_steps
+        # Initial phase = mean of injected biases across symbol slots.
+        biases = self.code_bias[codes]  # [B, n_symbols, n_oscillators]
+        phase = biases.mean(dim=1)      # [B, n_oscillators]
+        # Discretised Kuramoto update for `steps` Euler steps.
+        for _ in range(steps):
+            # dphi_i/dt = omega_i + sum_j K_ij * sin(phi_j - phi_i)
+            diff = phase.unsqueeze(-1) - phase.unsqueeze(-2)
+            # diff[b, i, j] = phi_i - phi_j; we want phi_j - phi_i for the formula.
+            # Use -diff so the sign is right.
+            interaction = (self.coupling * torch.sin(-diff)).sum(dim=-1)
+            phase = phase + self.dt * (self.natural_freqs + interaction)
+        return phase  # [B, n_oscillators]
+
+    def demodulate(self, carrier: Tensor) -> Tensor:
+        """Recover `[B, n_symbols]` long codes from a `[B, n_oscillators]` carrier."""
+        logits = self.readout(carrier)
+        logits = logits.view(-1, self.n_symbols, self.alphabet_size)
+        return logits.argmax(dim=-1)
+
+    def demodulate_logits(self, carrier: Tensor) -> Tensor:
+        """`[B, n_symbols, alphabet_size]` logits — for training the read-out."""
+        logits = self.readout(carrier)
+        return logits.view(-1, self.n_symbols, self.alphabet_size)
