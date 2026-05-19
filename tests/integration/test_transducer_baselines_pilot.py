@@ -48,3 +48,19 @@ def test_learned_lr_changes_mi() -> None:
     mi_a = _mi_entropy_bits(learned_a.forward(src, hard=True), dst)["mi_bits"]
     mi_b = _mi_entropy_bits(learned_b.forward(src, hard=True), dst)["mi_bits"]
     assert mi_a != mi_b
+
+
+@pytest.mark.slow
+def test_benchmark_lambda_cycle_changes_vec2vec() -> None:
+    from scripts.transducer_baselines_pilot import run_transducer_benchmark
+    a = run_transducer_benchmark(steps=200, seed=0, lambda_cycle=1.0)
+    b = run_transducer_benchmark(steps=200, seed=0, lambda_cycle=100.0)
+    assert a["vec2vec"]["mi_bits"] != b["vec2vec"]["mi_bits"]
+
+
+@pytest.mark.slow
+def test_benchmark_n_anchors_changes_relrep() -> None:
+    from scripts.transducer_baselines_pilot import run_transducer_benchmark
+    a = run_transducer_benchmark(steps=200, seed=0, n_anchors=8)
+    b = run_transducer_benchmark(steps=200, seed=0, n_anchors=64)
+    assert a["relative_rep"]["mi_bits"] != b["relative_rep"]["mi_bits"]

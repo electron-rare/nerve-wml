@@ -73,7 +73,8 @@ def _mi_entropy_bits(
 
 
 def run_transducer_benchmark(
-    *, steps: int = 2000, seed: int = 0
+    *, steps: int = 2000, seed: int = 0,
+    lambda_cycle: float = 10.0, n_anchors: int = 32,
 ) -> dict[str, dict[str, float]]:
     """Run all four methods on one task; return per-method MI/entropy."""
     src_codes, dst_codes, src_wml, dst_wml = _build_task(seed)
@@ -92,14 +93,14 @@ def run_transducer_benchmark(
     )
 
     rel = RelativeRepTransducer(
-        src_codebook=src_cb, dst_codebook=dst_cb, n_anchors=32, seed=seed
+        src_codebook=src_cb, dst_codebook=dst_cb, n_anchors=n_anchors, seed=seed
     )
     results["relative_rep"] = _mi_entropy_bits(
         rel.forward(src_codes), dst_codes
     )
 
     v2v = Vec2VecTransducer(
-        src_codebook=src_cb, dst_codebook=dst_cb, seed=seed
+        src_codebook=src_cb, dst_codebook=dst_cb, lambda_cycle=lambda_cycle, seed=seed
     )
     v2v.fit(steps=max(steps, 200))
     results["vec2vec"] = _mi_entropy_bits(v2v.forward(src_codes), dst_codes)
