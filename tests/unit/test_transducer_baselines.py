@@ -59,3 +59,19 @@ def test_relative_rep_invariant_to_rotation():
     )
     # Cosine-to-anchors is rotation-invariant -> identity recovered.
     assert torch.equal(t.forward(torch.arange(64)), torch.arange(64))
+
+
+def test_vec2vec_trains_and_maps_valid_codes():
+    from track_p.transducer_baselines import Vec2VecTransducer
+    torch.manual_seed(4)
+    src_cb = torch.randn(64, 32)
+    q, _ = torch.linalg.qr(torch.randn(32, 32))
+    dst_cb = src_cb @ q
+    t = Vec2VecTransducer(src_codebook=src_cb, dst_codebook=dst_cb, seed=0)
+    history = t.fit(steps=200)
+    assert len(history) == 200
+    # Cycle-consistency loss should decrease over training.
+    assert history[-1] < history[0]
+    dst_code = t.forward(torch.tensor([1, 30, 63]))
+    assert dst_code.shape == (3,)
+    assert (dst_code >= 0).all() and (dst_code < 64).all()

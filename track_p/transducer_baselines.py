@@ -128,3 +128,118 @@ class RelativeRepTransducer(nn.Module):
         keys = F.normalize(self.dst_rel, dim=-1)  # [alphabet, n_anchors]
         sim = query @ keys.T  # [B, alphabet]
         return sim.argmax(dim=-1)
+
+
+class Vec2VecTransducer(nn.Module):
+    """Unsupervised src->dst code map (vec2vec-style GAN + cycle-consistency).
+
+    Jha et al. 2025 (arXiv:2505.12540): translate between two latent spaces
+    with NO paired supervision, using an adversarial loss (discriminator must
+    not tell translated-src from real-dst) plus a cycle-consistency loss
+    (`G_dst->src(G_src->dst(x)) ~= x`). Here the two "spaces" are the src and
+    dst WML codebooks treated as unpaired point clouds.
+
+    `fit` trains the two generators and one discriminator; `forward` maps a
+    src code by translating its embedding and taking the nearest dst row.
+
+    Parameters
+    ----------
+    src_codebook, dst_codebook
+        `[alphabet_size, D]` float tensors, same shape.
+    hidden
+        Width of the generator / discriminator MLPs.
+    lambda_cycle
+        Weight of the cycle-consistency term.
+    seed
+        RNG seed for parameter init.
+    """
+
+    _src_codebook: Tensor
+    _dst_codebook: Tensor
+    alphabet_size: int
+    lambda_cycle: float
+    g_src2dst: nn.Sequential
+    g_dst2src: nn.Sequential
+    discriminator: nn.Sequential
+
+
+
+    def __init__(
+        self,
+        src_codebook: Tensor,
+        dst_codebook: Tensor,
+        *,
+        hidden: int = 64,
+        lambda_cycle: float = 10.0,
+        seed: int = 0,
+    ) -> None:
+        super().__init__()
+        if src_codebook.shape != dst_codebook.shape:
+            raise ValueError(
+                f"codebook shape mismatch: {src_codebook.shape} "
+                f"vs {dst_codebook.shape}"
+            )
+        torch.manual_seed(seed)
+        self.alphabet_size, dim = src_codebook.shape
+        self.lambda_cycle = float(lambda_cycle)
+        self.register_buffer("_src_codebook", src_codebook.detach().clone())
+        self.register_buffer("_dst_codebook", dst_codebook.detach().clone())
+
+        def _mlp(d_in: int, d_out: int) -> nn.Sequential:
+            return nn.Sequential(
+                nn.Linear(d_in, hidden),
+                nn.ReLU(),
+                nn.Linear(hidden, d_out),
+            )
+
+        self.g_src2dst = _mlp(dim, dim)
+        self.g_dst2src = _mlp(dim, dim)
+        self.discriminator = nn.Sequential(
+            nn.Linear(dim, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, 1),
+        )
+
+    def fit(self, *, steps: int = 2000, lr: float = 1e-3) -> list[float]:
+        """Adversarial + cycle training. Returns the per-step cycle loss."""
+        gen_params = list(self.g_src2dst.parameters()) + list(
+            self.g_dst2src.parameters()
+        )
+        opt_g = torch.optim.Adam(gen_params, lr=lr)
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr)
+        bce = nn.BCEWithLogitsLoss()
+        src = self._src_codebook
+        dst = self._dst_codebook
+        ones = torch.ones(self.alphabet_size, 1)
+        zeros = torch.zeros(self.alphabet_size, 1)
+        cycle_history: list[float] = []
+        for _ in range(steps):
+            # --- discriminator step ---
+            opt_d.zero_grad()
+            fake = self.g_src2dst(src).detach()
+            loss_d = bce(self.discriminator(dst), ones) + bce(
+                self.discriminator(fake), zeros
+            )
+            loss_d.backward()
+            opt_d.step()
+            # --- generator step: fool D + cycle-consistency ---
+            opt_g.zero_grad()
+            fake_dst = self.g_src2dst(src)
+            loss_adv = bce(self.discriminator(fake_dst), ones)
+            cyc_src = F.mse_loss(self.g_dst2src(fake_dst), src)
+            cyc_dst = F.mse_loss(
+                self.g_src2dst(self.g_dst2src(dst)), dst
+            )
+            loss_cycle = cyc_src + cyc_dst
+            (loss_adv + self.lambda_cycle * loss_cycle).backward()
+            opt_g.step()
+            cycle_history.append(float(loss_cycle.detach()))
+        return cycle_history
+
+    def forward(self, src_code: Tensor) -> Tensor:
+        """Map `[B]` long src codes to `[B]` long dst codes."""
+        with torch.no_grad():
+            src_emb = self._src_codebook[src_code]  # [B, D]
+            translated = self.g_src2dst(src_emb)  # [B, D]
+            dist = torch.cdist(translated, self._dst_codebook)
+        return dist.argmin(dim=-1)
