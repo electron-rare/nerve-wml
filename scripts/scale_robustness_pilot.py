@@ -11,6 +11,7 @@ Run directly:  uv run python -m scripts.scale_robustness_pilot
 """
 from __future__ import annotations
 
+import numpy as np
 import torch
 
 from nerve_wml.methodology.hsic_cknna import scale_robustness_sweep
@@ -35,26 +36,45 @@ def _substrate_embeddings(seed: int, n: int) -> tuple[torch.Tensor, torch.Tensor
 
 def run_scale_robustness(
     *, sizes: tuple[int, ...] = (64, 128, 256, 512), seed: int = 0
-) -> list[dict[str, float]]:
-    """Run the HSIC/CKNNA sweep on real substrate embeddings."""
+) -> dict[str, list[dict[str, float]]]:
+    """Run the HSIC/CKNNA sweep on real substrate embeddings.
+
+    Returns both the real sweep (`rows`) and a null sweep (`null_rows`) in
+    which the LIF embedding cloud is independently permuted, so the two
+    substrates lose their per-row pairing. The null curves should sit
+    materially below the real ones at every N.
+    """
     n_max = max(sizes)
     mlp_emb, lif_emb = _substrate_embeddings(seed, n_max)
+    mlp_np = mlp_emb.cpu().numpy()
+    lif_np = lif_emb.cpu().numpy()
     rows = scale_robustness_sweep(
-        mlp_emb.cpu().numpy(),
-        lif_emb.cpu().numpy(),
-        sizes=sizes,
-        k=10,
-        seed=seed,
+        mlp_np, lif_np, sizes=sizes, k=10, seed=seed,
     )
-    return [
-        {"n": float(r.n), "hsic": r.hsic, "cknna": r.cknna} for r in rows
-    ]
+    perm = np.random.default_rng(seed + 9973).permutation(n_max)
+    null_rows_raw = scale_robustness_sweep(
+        mlp_np, lif_np[perm], sizes=sizes, k=10, seed=seed + 9973,
+    )
+    return {
+        "rows": [
+            {"n": float(r.n), "hsic": r.hsic, "cknna": r.cknna} for r in rows
+        ],
+        "null_rows": [
+            {"n": float(r.n), "hsic": r.hsic, "cknna": r.cknna}
+            for r in null_rows_raw
+        ],
+    }
 
 
 def main() -> None:
-    rows = run_scale_robustness(sizes=(64, 128, 256, 512), seed=0)
+    out = run_scale_robustness(sizes=(64, 128, 256, 512), seed=0)
+    print("real:")
     print(f"{'N':>8}{'HSIC':>14}{'CKNNA':>10}")
-    for r in rows:
+    for r in out["rows"]:
+        print(f"{int(r['n']):>8}{r['hsic']:>14.5f}{r['cknna']:>10.3f}")
+    print("null (lif permuted):")
+    print(f"{'N':>8}{'HSIC':>14}{'CKNNA':>10}")
+    for r in out["null_rows"]:
         print(f"{int(r['n']):>8}{r['hsic']:>14.5f}{r['cknna']:>10.3f}")
 
 

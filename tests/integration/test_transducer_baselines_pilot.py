@@ -6,12 +6,13 @@ from scripts.transducer_baselines_pilot import run_transducer_benchmark
 @pytest.mark.slow
 def test_run_transducer_benchmark_reports_all_methods():
     results = run_transducer_benchmark(steps=300, seed=0)
-    assert set(results) == {
+    assert {
         "learned",
         "procrustes",
         "relative_rep",
         "vec2vec",
-    }
+        "null",
+    } <= set(results)
     for name, row in results.items():
         # MI is non-negative and <= log2(64) = 6 bits.
         assert 0.0 <= row["mi_bits"] <= 6.01, name
@@ -24,3 +25,11 @@ def test_learned_transducer_beats_random_floor():
     results = run_transducer_benchmark(steps=300, seed=0)
     # The learned transducer must transmit more than the ~0-bit floor.
     assert results["learned"]["mi_bits"] > 0.5
+
+
+@pytest.mark.slow
+def test_null_arm_below_learned():
+    res = run_transducer_benchmark(steps=300, seed=0)
+    assert "null" in res
+    assert "mi_bits" in res["null"]
+    assert res["null"]["mi_bits"] < res["learned"]["mi_bits"] - 0.3

@@ -104,6 +104,15 @@ def run_transducer_benchmark(
     v2v.fit(steps=max(steps, 200))
     results["vec2vec"] = _mi_entropy_bits(v2v.forward(src_codes), dst_codes)
 
+    # Null arm: feed the learned transducer a shuffled src stream; the
+    # prediction should be near-independent of the (un-shuffled) dst codes,
+    # so MI collapses near zero. Deterministic via derived seed.
+    perm = np.random.default_rng(seed + 9973).permutation(src_codes.shape[0])
+    shuffled_pred = learned.forward(
+        src_codes[torch.from_numpy(perm).long()], hard=True
+    )
+    results["null"] = _mi_entropy_bits(shuffled_pred, dst_codes)
+
     return results
 
 

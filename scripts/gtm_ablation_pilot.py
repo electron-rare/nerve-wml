@@ -82,6 +82,45 @@ def _train_gtm(
     return acc, mi, sync
 
 
+def _train_gtm_null(
+    *,
+    inputs: torch.Tensor,
+    targets: torch.Tensor,
+    steps: int,
+    seed: int,
+) -> tuple[float, float, float]:
+    """Null GTM: encode `inputs`, supervise toward `targets`.
+
+    When inputs and targets are independent (e.g. inputs are a shuffled
+    view of the originals), no deterministic input->target mapping exists
+    and MI between recovered and true codes should collapse near zero.
+    """
+    cfg = GammaThetaConfig(symbols_per_theta=inputs.shape[-1])
+    gtm = GammaThetaMultiplexer(cfg=cfg, seed=seed)
+    opt = Adam(gtm.parameters(), lr=0.02)
+    for _ in range(steps):
+        opt.zero_grad()
+        carrier = gtm.forward(inputs)
+        soft = gtm.demodulate(carrier, hard=False, tau=1.0)
+        loss = F.cross_entropy(
+            torch.log(soft + 1e-9).reshape(-1, soft.shape[-1]),
+            targets.reshape(-1),
+        )
+        loss.backward()
+        opt.step()
+        gtm.step()
+    with torch.no_grad():
+        carrier = gtm.forward(inputs)
+        pred = gtm.demodulate(carrier, hard=True)
+        acc = float((pred == targets).float().mean())
+        mi = mi_miller_madow_discrete(
+            pred.reshape(-1).cpu().numpy().astype(np.int64),
+            targets.reshape(-1).cpu().numpy().astype(np.int64),
+        ) * _BITS
+        sync = _synchrony_index(carrier)
+    return acc, mi, sync
+
+
 def _train_simple(
     codes: torch.Tensor, steps: int
 ) -> tuple[float, float, float]:
@@ -119,6 +158,15 @@ def run_gtm_ablation(
     codes = torch.randint(0, 64, (128, 7))
     acc_g, mi_g, sync_g = _train_gtm(codes, steps, seed)
     acc_s, mi_s, sync_s = _train_simple(codes, steps)
+    # Null arm: train GTM with mismatched inputs/targets (inputs are a
+    # shuffled view of the codes; targets remain the originals), so the
+    # learned mapping cannot exploit any code-to-code correspondence and
+    # MI between recovered and true codes should collapse near zero.
+    gen = torch.Generator().manual_seed(seed + 9973)
+    perm = torch.randperm(codes.shape[0], generator=gen)
+    acc_n, mi_n, sync_n = _train_gtm_null(
+        inputs=codes[perm], targets=codes, steps=steps, seed=seed + 9973
+    )
     return {
         "gtm": {
             "accuracy": acc_g,
@@ -129,6 +177,11 @@ def run_gtm_ablation(
             "accuracy": acc_s,
             "mi_bits": mi_s,
             "synchrony_index": sync_s,
+        },
+        "null": {
+            "accuracy": acc_n,
+            "mi_bits": mi_n,
+            "synchrony_index": sync_n,
         },
     }
 
