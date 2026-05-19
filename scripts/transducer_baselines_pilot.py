@@ -46,11 +46,11 @@ def _build_task(seed: int) -> tuple[torch.Tensor, torch.Tensor, MlpWML, MlpWML]:
 
 
 def _train_learned(
-    src_codes: torch.Tensor, dst_codes: torch.Tensor, steps: int
+    src_codes: torch.Tensor, dst_codes: torch.Tensor, steps: int, *, lr: float = 0.05
 ) -> Transducer:
     """Train the learned Transducer in GUMBEL_SOFTMAX mode (gradient flows)."""
     t = Transducer(alphabet_size=64, gating=TransducerGating.GUMBEL_SOFTMAX)
-    opt = Adam(t.parameters(), lr=0.05)
+    opt = Adam(t.parameters(), lr=lr)
     for _ in range(steps):
         opt.zero_grad()
         soft = t.forward(src_codes, hard=False, tau=1.0)  # [B, 64]

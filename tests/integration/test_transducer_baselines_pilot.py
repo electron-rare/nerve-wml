@@ -1,6 +1,11 @@
 import pytest
 
-from scripts.transducer_baselines_pilot import run_transducer_benchmark
+from scripts.transducer_baselines_pilot import (
+    _build_task,
+    _mi_entropy_bits,
+    _train_learned,
+    run_transducer_benchmark,
+)
 
 
 @pytest.mark.slow
@@ -33,3 +38,13 @@ def test_null_arm_below_learned():
     assert "null" in res
     assert "mi_bits" in res["null"]
     assert res["null"]["mi_bits"] < res["learned"]["mi_bits"] - 0.3
+
+
+@pytest.mark.slow
+def test_learned_lr_changes_mi() -> None:
+    src, dst, *_ = _build_task(0)
+    learned_a = _train_learned(src, dst, 200, lr=1e-2)
+    learned_b = _train_learned(src, dst, 200, lr=5e-2)
+    mi_a = _mi_entropy_bits(learned_a.forward(src, hard=True), dst)["mi_bits"]
+    mi_b = _mi_entropy_bits(learned_b.forward(src, hard=True), dst)["mi_bits"]
+    assert mi_a != mi_b
