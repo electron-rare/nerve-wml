@@ -243,3 +243,63 @@ class Vec2VecTransducer(nn.Module):
             translated = self.g_src2dst(src_emb)  # [B, D]
             dist = torch.cdist(translated, self._dst_codebook)
         return dist.argmin(dim=-1)
+
+
+class SimpleGatingMultiplexer(nn.Module):
+    """Plain learned-gating control for the GTM ablation.
+
+    Closes gap 2 (ablation arm): a minimal alternative to
+    `track_p.multiplexer.GammaThetaMultiplexer` with NO theta/gamma band
+    multiplexing. Each of the `n_symbols` code slots is embedded and summed
+    into a flat carrier through a single learned linear gate; demodulation is
+    a learned linear read-out. Same `forward(codes)->carrier` /
+    `demodulate(carrier)->codes` contract as GTM, so the ablation script can
+    swap them.
+
+    Parameters
+    ----------
+    alphabet_size
+        Code alphabet size.
+    n_symbols
+        Code slots per carrier (GTM's `symbols_per_theta`).
+    carrier_dim
+        Width of the flat carrier vector.
+    """
+
+    def __init__(
+        self,
+        *,
+        alphabet_size: int = 64,
+        n_symbols: int = 7,
+        carrier_dim: int = 64,
+    ) -> None:
+        super().__init__()
+        self.alphabet_size = alphabet_size
+        self.n_symbols = n_symbols
+        self.carrier_dim = carrier_dim
+        self.embed = nn.Embedding(alphabet_size, carrier_dim)
+        # One learned scalar gate weight per symbol slot.
+        self.gate = nn.Linear(n_symbols, n_symbols, bias=False)
+        self.readout = nn.Linear(carrier_dim, n_symbols * alphabet_size)
+
+    def forward(self, codes: Tensor) -> Tensor:
+        """Encode `[B, n_symbols]` long codes to a `[B, carrier_dim]` carrier."""
+        if codes.shape[-1] != self.n_symbols:
+            raise ValueError(
+                f"expected {self.n_symbols} symbols, got {codes.shape[-1]}"
+            )
+        emb = self.embed(codes)  # [B, n_symbols, carrier_dim]
+        slot_id = torch.eye(self.n_symbols, device=codes.device)
+        gates = self.gate(slot_id).diagonal()  # [n_symbols]
+        return (emb * gates[None, :, None]).sum(dim=1)  # [B, carrier_dim]
+
+    def demodulate(self, carrier: Tensor) -> Tensor:
+        """Recover `[B, n_symbols]` long codes from a `[B, carrier_dim]` carrier."""
+        logits = self.readout(carrier)  # [B, n_symbols * alphabet]
+        logits = logits.view(-1, self.n_symbols, self.alphabet_size)
+        return logits.argmax(dim=-1)
+
+    def demodulate_logits(self, carrier: Tensor) -> Tensor:
+        """`[B, n_symbols, alphabet_size]` logits — for training the read-out."""
+        logits = self.readout(carrier)
+        return logits.view(-1, self.n_symbols, self.alphabet_size)
