@@ -56,3 +56,44 @@ def hsic_debiased(x: np.ndarray, y: np.ndarray) -> float:
         term_trace + term_outer - term_cross
     ) / (n * (n - 3))
     return float(unbiased)
+
+
+def _knn_mask(x: np.ndarray, k: int) -> np.ndarray:
+    """Boolean `[N, N]` mask: True where column j is one of row i's k
+    nearest neighbours by Euclidean distance (self excluded)."""
+    x = np.asarray(x, dtype=np.float64)
+    if x.ndim != 2:
+        raise ValueError(f"expected [N, D] array, got shape {x.shape}")
+    n = x.shape[0]
+    if not 1 <= k <= n - 1:
+        raise ValueError(f"k must be in [1, N-1]={n - 1}, got {k}")
+    sq = (x * x).sum(axis=1)
+    dist = sq[:, None] + sq[None, :] - 2.0 * (x @ x.T)
+    np.fill_diagonal(dist, np.inf)  # never pick self
+    nn_idx = np.argpartition(dist, kth=k - 1, axis=1)[:, :k]
+    mask = np.zeros((n, n), dtype=bool)
+    rows = np.repeat(np.arange(n), k)
+    mask[rows, nn_idx.reshape(-1)] = True
+    return mask
+
+
+def cknna(x: np.ndarray, y: np.ndarray, *, k: int = 10) -> float:
+    """Mutual k-NN alignment (CKNNA), Huh et al. 2024.
+
+    Fraction of x's k-NN graph edges that also appear in y's k-NN graph,
+    averaged over rows. Scale- and rotation-tolerant; returns 1.0 when the
+    two neighbourhood structures coincide and ~k/N under independence.
+
+    Parameters
+    ----------
+    x, y
+        `[N, D]` arrays with the same `N`.
+    k
+        Neighbourhood size.
+    """
+    mx = _knn_mask(x, k)
+    my = _knn_mask(y, k)
+    if mx.shape != my.shape:
+        raise ValueError(f"row mismatch: x {mx.shape}, y {my.shape}")
+    intersection = np.logical_and(mx, my).sum(axis=1)
+    return float(np.mean(intersection / k))

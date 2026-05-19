@@ -1,6 +1,6 @@
 import numpy as np
 
-from nerve_wml.methodology.hsic_cknna import hsic_debiased
+from nerve_wml.methodology.hsic_cknna import cknna, hsic_debiased
 
 
 def test_hsic_debiased_zero_for_independent():
@@ -26,3 +26,25 @@ def test_hsic_debiased_symmetric():
     a = hsic_debiased(x, y)
     b = hsic_debiased(y, x)
     assert abs(a - b) < 1e-9
+
+
+def test_cknna_one_for_identical():
+    rng = np.random.default_rng(3)
+    x = rng.standard_normal((120, 16))
+    # CKNNA is scale-invariant: a global rescale must not change the score.
+    assert abs(cknna(x, 3.0 * x, k=10) - 1.0) < 1e-9
+
+
+def test_cknna_low_for_independent():
+    rng = np.random.default_rng(4)
+    x = rng.standard_normal((200, 16))
+    y = rng.standard_normal((200, 16))
+    # Random neighborhoods overlap at chance ~ k / N.
+    assert cknna(x, y, k=10) < 0.2
+
+
+def test_cknna_high_for_aligned():
+    rng = np.random.default_rng(5)
+    x = rng.standard_normal((200, 16))
+    y = x + 0.05 * rng.standard_normal((200, 16))
+    assert cknna(x, y, k=10) > 0.6
