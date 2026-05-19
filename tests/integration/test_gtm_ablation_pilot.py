@@ -28,3 +28,12 @@ def test_null_arm_below_gtm():
     res = run_gtm_ablation(steps=300, seed=0)
     assert "null" in res
     assert res["null"]["mi_bits"] < res["gtm"]["mi_bits"] - 0.3
+
+
+@pytest.mark.slow
+def test_gtm_ablation_includes_akorn_arm() -> None:
+    from scripts.gtm_ablation_pilot import run_gtm_ablation
+    res = run_gtm_ablation(steps=200, seed=0)
+    assert "akorn" in res
+    for key in ("accuracy", "mi_bits", "synchrony_index"):
+        assert key in res["akorn"]

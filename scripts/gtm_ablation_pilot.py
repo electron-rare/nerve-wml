@@ -27,7 +27,10 @@ from torch.optim import Adam
 
 from nerve_wml.methodology.mi_estimators import mi_miller_madow_discrete
 from track_p.multiplexer import GammaThetaConfig, GammaThetaMultiplexer
-from track_p.transducer_baselines import SimpleGatingMultiplexer
+from track_p.transducer_baselines import (
+    KuramotoMultiplexer,
+    SimpleGatingMultiplexer,
+)
 
 _BITS = float(np.log2(np.e))
 
@@ -150,6 +153,36 @@ def _train_simple(
     return acc, mi, sync
 
 
+def _train_akorn(
+    codes: torch.Tensor, steps: int,
+) -> tuple[float, float, float]:
+    """Train the KuramotoMultiplexer; same return triple as _train_simple."""
+    m = KuramotoMultiplexer(
+        alphabet_size=64, n_symbols=codes.shape[-1],
+        n_oscillators=32, n_steps=8,
+    )
+    opt = Adam(m.parameters(), lr=0.02)
+    for _ in range(steps):
+        opt.zero_grad()
+        carrier = m.forward(codes)
+        logits = m.demodulate_logits(carrier)
+        loss = F.cross_entropy(
+            logits.reshape(-1, logits.shape[-1]), codes.reshape(-1)
+        )
+        loss.backward()
+        opt.step()
+    with torch.no_grad():
+        carrier = m.forward(codes)
+        pred = m.demodulate(carrier)
+        acc = float((pred == codes).float().mean())
+        mi = mi_miller_madow_discrete(
+            pred.reshape(-1).cpu().numpy().astype(np.int64),
+            codes.reshape(-1).cpu().numpy().astype(np.int64),
+        ) * _BITS
+        sync = _synchrony_index(carrier)
+    return acc, mi, sync
+
+
 def run_gtm_ablation(
     *, steps: int = 2000, seed: int = 0
 ) -> dict[str, dict[str, float]]:
@@ -158,6 +191,7 @@ def run_gtm_ablation(
     codes = torch.randint(0, 64, (128, 7))
     acc_g, mi_g, sync_g = _train_gtm(codes, steps, seed)
     acc_s, mi_s, sync_s = _train_simple(codes, steps)
+    acc_a, mi_a, sync_a = _train_akorn(codes, steps)
     # Null arm: train GTM with mismatched inputs/targets (inputs are a
     # shuffled view of the codes; targets remain the originals), so the
     # learned mapping cannot exploit any code-to-code correspondence and
@@ -177,6 +211,11 @@ def run_gtm_ablation(
             "accuracy": acc_s,
             "mi_bits": mi_s,
             "synchrony_index": sync_s,
+        },
+        "akorn": {
+            "accuracy": acc_a,
+            "mi_bits": mi_a,
+            "synchrony_index": sync_a,
         },
         "null": {
             "accuracy": acc_n,
