@@ -61,7 +61,7 @@ essentials for readers.
 
 \section{Related Work}
 
-The nerve protocol sits at the intersection of four research lines. We relate each briefly below.
+The nerve protocol sits at the intersection of five research lines. We relate each briefly below.
 
 \textbf{Predictive coding.} Rao and Ballard~\cite{rao1999predictive} introduced predictive coding as a unifying interpretation of extra-classical receptive-field effects in the visual cortex, where each layer transmits its prediction downstream and receives a residual error upstream. Bastos et al.~\cite{bastos2012canonical} then proposed the canonical microcircuit for predictive coding, mapping predictions to $\gamma$-band activity in superficial layers and errors to $\theta$/$\alpha$-band activity in deep layers. Our $\gamma$/$\theta$ multiplexing (see \S\ref{sec:method}) is a direct computational transcription of this canonical microcircuit, with $\gamma$-priority replacing the biological phase-locking.
 
@@ -72,6 +72,30 @@ The nerve protocol sits at the intersection of four research lines. We relate ea
 \textbf{Representation similarity and cross-architecture communication.} Kornblith et al.~\cite{kornblith2019similarity} introduced linear and RBF Centered Kernel Alignment (CKA), a Hilbert--Schmidt Independence Criterion-based metric that is invariant to orthogonal transformation and isotropic scaling of hidden representations. Morcos, Raghu, and Bengio~\cite{morcos2018insights} introduced Projection-Weighted CCA (PWCCA) on the same broad question. Both operate on \emph{continuous} hidden states. Moschella et al.~\cite{moschella2022relative} subsequently proposed \emph{relative representations}: encoding each sample as a vector of cosine similarities to a fixed anchor set, which achieves invariance to angle-preserving transformations and enables zero-shot model stitching across independently trained models (their own Table~5 reports, for example, a ViT$\to$ResNet50 stitch accuracy of $4.69\%$ absolute vs $84.46\%$ relative on CIFAR-100). Their Figure~7 mentions vector-quantised anchors as an alternative similarity function but explicitly leaves the discrete variant as future work. Saxe et al.~\cite{saxe2024universality} argue empirically for a representation-universality hypothesis across biological and artificial networks using representational dissimilarity analysis (Pearson correlation of RDMs), also on continuous representations. Huh et al.~\cite{huh2024platonic} generalise these findings into the \emph{Platonic Representation Hypothesis}: representations across architectures, modalities, and training objectives converge toward a shared statistical model of reality. Our mutual-kNN alignment measurement in \S\ref{sec:info-tx}~(6) situates nerve-wml as an empirical validation of PRH on \emph{structurally heterogeneous biologically-inspired substrates} --- ANN vs spiking LIF with surrogate-gradient --- rather than the vision/language cross-modality pairs that dominate their evidence. We use \emph{biologically-inspired} rather than \emph{biological} to distinguish surrogate-gradient LIF from actual neural recordings, consistent with~\cite{aristotelianprh2026}'s caution against rhetorical overextension of PRH. Our measured $0.174$ sits near the lower bound of Huh et al.'s cross-modality range ($0.15$--$0.25$), which extends up to $\sim 0.50$ for same-modality pairs; this placement reflects the structural heterogeneity between ANN and spiking substrates, not a ceiling on PRH validity.
 
 Our \texttt{MI}/\texttt{H} ratio on emitted discrete codes (\S\ref{sec:info-tx}) occupies the slot this family leaves open: we measure, at the discrete protocol-output level, what Kornblith's CKA, Morcos's PWCCA, Moschella's relative representations, and Saxe's RDMs measure on continuous hidden states. Empirically we observe $\mathrm{MI}/\mathrm{H} \approx 0.953$ versus $\mathrm{CKA}$ on the corresponding argmax one-hots of $0.910$ (\S\ref{sec:info-tx}); the $4.3$-percentage-point gap tracks soft many-to-one code mappings that kernel-alignment metrics miss by construction.
+
+\textbf{Adjacent abstraction layers: model IRs and event transports.}
+Two recent lines define communication structure for brain-inspired
+systems at abstraction layers that bracket the nerve protocol, and we
+position against both to forestall a category error. The Neuromorphic
+Intermediate Representation~\cite{pedersen2024nir} is a
+\emph{static computational-graph IR} --- a hardware-agnostic instruction
+set that lets a single spiking model be compiled onto Loihi, SpiNNaker,
+or a simulator without rewriting; it standardises \emph{what graph} a
+substrate runs. The nerve protocol operates one layer above: it is a
+\emph{runtime} communication contract between already-instantiated,
+independently trained modules, with learned per-edge transducers and
+typed $(\pi, \varepsilon)$ roles, and it makes no claim about the
+internal graph of any WML. Conversely, Address-Event Representation and
+its recent UDP-over-Ethernet biohybrid formalisation~\cite{aer2025biohybrid}
+specify a \emph{transport and encoding} layer --- how individual spike
+events are timestamped, addressed, and physically carried between a
+silicon and a biological population. The nerve protocol is
+substrate-agnostic precisely because it does not fix a transport: a
+neuroletter is a typed, phase-tagged symbol whose \emph{semantics} are
+learned, and AER (or any other event bus) could serve as its physical
+carrier. NIR governs the model, AER governs the wire; nerve-wml
+governs the learned message in between, and is orthogonal to both by
+construction rather than by competition.
 
 \textbf{Knowledge distillation.} Hinton et al.~\cite{hinton2015distilling} proposed training a student network end-to-end by minimising the weighted loss $\alpha\,\mathrm{CE}(p_S(\cdot; T), p_T(\cdot; T))\,T^2 + (1-\alpha)\,\mathrm{CE}_{\mathrm{hard}}(y)$, where $T$ is a temperature that softens the teacher's class distribution. Our cross-substrate merge (Test (3), \S\ref{sec:info-tx}) is structurally different: both substrates are \emph{frozen}, only a linear transducer between their emission spaces is trained, supervision is ground-truth labels only, and the passed message is a logit vector over a $64$-code protocol alphabet rather than a softmax over $n_{\mathrm{classes}}$ label values. This separates protocol channel capacity from student learning capacity.
 
