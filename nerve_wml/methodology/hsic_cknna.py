@@ -11,6 +11,8 @@ estimators freely. All functions accept `[N, D]` float arrays.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 
@@ -97,3 +99,60 @@ def cknna(x: np.ndarray, y: np.ndarray, *, k: int = 10) -> float:
         raise ValueError(f"row mismatch: x {mx.shape}, y {my.shape}")
     intersection = np.logical_and(mx, my).sum(axis=1)
     return float(np.mean(intersection / k))
+
+
+@dataclass(frozen=True)
+class ScaleRobustnessRow:
+    """One sample-size point of a scale-robustness sweep."""
+
+    n: int
+    hsic: float
+    cknna: float
+
+
+def scale_robustness_sweep(
+    x: np.ndarray,
+    y: np.ndarray,
+    *,
+    sizes: tuple[int, ...],
+    k: int = 10,
+    seed: int = 0,
+) -> list[ScaleRobustnessRow]:
+    """Recompute HSIC and CKNNA at increasing random subsample sizes.
+
+    PRH critiques (Huh et al. 2024 §6) report that representation alignment
+    can degrade as sample size grows; this helper exposes that trend. Each
+    size draws a fresh random subset (without replacement) from the same
+    `[N, D]` pair.
+
+    Parameters
+    ----------
+    x, y
+        `[N, D]` arrays with the same `N`.
+    sizes
+        Subsample sizes, each <= N.
+    k
+        Neighbourhood size forwarded to :func:`cknna`.
+    seed
+        RNG seed for the subsampling.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64)
+    n_total = x.shape[0]
+    if y.shape[0] != n_total:
+        raise ValueError(f"row mismatch: x {n_total}, y {y.shape[0]}")
+    rng = np.random.default_rng(seed)
+    rows: list[ScaleRobustnessRow] = []
+    for size in sizes:
+        if not 4 <= size <= n_total:
+            raise ValueError(f"size {size} out of [4, {n_total}]")
+        idx = rng.choice(n_total, size=size, replace=False)
+        xs, ys = x[idx], y[idx]
+        rows.append(
+            ScaleRobustnessRow(
+                n=size,
+                hsic=hsic_debiased(xs, ys),
+                cknna=cknna(xs, ys, k=min(k, size - 1)),
+            )
+        )
+    return rows

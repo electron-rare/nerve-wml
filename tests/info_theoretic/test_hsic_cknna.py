@@ -1,6 +1,6 @@
 import numpy as np
 
-from nerve_wml.methodology.hsic_cknna import cknna, hsic_debiased
+from nerve_wml.methodology.hsic_cknna import cknna, hsic_debiased, scale_robustness_sweep
 
 
 def test_hsic_debiased_zero_for_independent():
@@ -48,3 +48,15 @@ def test_cknna_high_for_aligned():
     x = rng.standard_normal((200, 16))
     y = x + 0.05 * rng.standard_normal((200, 16))
     assert cknna(x, y, k=10) > 0.6
+
+
+def test_scale_robustness_sweep_returns_one_row_per_size():
+    rng = np.random.default_rng(6)
+    x = rng.standard_normal((800, 16))
+    y = x + 0.05 * rng.standard_normal((800, 16))
+    rows = scale_robustness_sweep(x, y, sizes=(100, 200, 400), k=10, seed=0)
+    assert [r.n for r in rows] == [100, 200, 400]
+    # Aligned data: cknna stays high at every sample size.
+    assert all(r.cknna > 0.5 for r in rows)
+    # HSIC is finite and non-negative on aligned data.
+    assert all(np.isfinite(r.hsic) and r.hsic >= 0.0 for r in rows)
