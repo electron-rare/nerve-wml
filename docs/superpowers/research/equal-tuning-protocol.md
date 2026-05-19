@@ -58,33 +58,13 @@ When citing equal-tuning results in a paper or report:
 - [ ] Disclose the limitations below (in this file, this pilot's HPs
       are not all wired through the underlying runners).
 
-## Limitations of the current pilot
+## Limitations (as of Plan A.3, 2026-05-20)
 
-This pilot is honest about what it *measures* vs. what it *declares*.
-Two non-trivial gaps remain between the declared grids and the
-underlying runners; they are deliberately surfaced here so that
-reviewers can judge equal-effort, rather than being silently glossed
-over:
+All three tunable axes (`lr`, `lambda_cycle`, `n_anchors`) are now
+threaded through the underlying training calls. Trial variation
+therefore reflects real hyperparameter effect plus seed noise.
 
-- **Learned `lr` is accepted-but-ignored.** The underlying
-  `scripts.transducer_baselines_pilot._train_learned(src, dst, steps)`
-  hard-codes `Adam(lr=0.05)`. `LEARNED_GRID` varies `(steps, lr)` for
-  grid-completeness, but `_learned_runner` discards the `lr` argument
-  and only `steps` and `seed` truly vary across trials. Wiring `lr`
-  through `_train_learned` is future work (Plan A.3).
-- **`lambda_cycle` and `n_anchors` are accepted-but-ignored.**
-  `run_transducer_benchmark(steps, seed)` does not expose
-  `lambda_cycle` (vec2vec) or `n_anchors` (relative representations);
-  both are hard-coded inside the bundled benchmark. `VEC2VEC_GRID` and
-  `RELREP_GRID` accept these parameters for grid-completeness, but
-  the trial variation in this pilot reflects **seed noise** and
-  (for vec2vec) `steps`, not full HP variation. Wiring these through
-  the bundled benchmark is future work (Plan A.3).
-- **Consequence.** The current pilot is an *equal-budget infrastructure
-  test* and a *seed-noise envelope*, not yet a full HP sweep. Once
-  `_train_learned` and `run_transducer_benchmark` accept the relevant
-  knobs, the same `run_equal_tuning` driver will become a real equal-
-  HP-effort comparison without any change to the protocol.
-
-This disclosure is the whole point of the protocol: equal-effort
-must be visible and falsifiable, not an unverifiable claim.
+Open knobs still hard-coded inside the runner (left as future work):
+- Vec2Vec internal generator/discriminator widths (`hidden`).
+- Learned transducer Gumbel softmax `tau`.
+- GTM PSK/PAM modulation choice.

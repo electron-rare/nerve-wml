@@ -40,13 +40,8 @@ RELREP_GRID: tuple[dict[str, Any], ...] = tuple(
 def _learned_runner(
     *, seed: int, steps: int, lr: float,
 ) -> dict[str, dict[str, float]]:
-    # _train_learned in the current pilot is positional (src, dst, steps)
-    # and returns a Transducer object. lr is NOT wired through; we
-    # accept it in the signature for grid-completeness and document the
-    # limitation in equal-tuning-protocol.md.
-    del lr  # accepted but ignored in current runner
     src_codes, dst_codes, *_ = _build_task(seed)
-    learned = _train_learned(src_codes, dst_codes, steps)
+    learned = _train_learned(src_codes, dst_codes, steps, lr=lr)
     pred = learned.forward(src_codes, hard=True)
     row = _mi_entropy_bits(pred, dst_codes)
     return {"learned": {"mi_bits": float(row["mi_bits"])}}
@@ -55,19 +50,18 @@ def _learned_runner(
 def _vec2vec_runner(
     *, seed: int, lambda_cycle: float, steps: int,
 ) -> dict[str, dict[str, float]]:
-    # lambda_cycle is not wired through run_transducer_benchmark; trial
-    # variation comes from `steps` and `seed`. Documented as limitation.
-    del lambda_cycle
-    res = run_transducer_benchmark(steps=steps, seed=seed)
+    res = run_transducer_benchmark(
+        steps=steps, seed=seed, lambda_cycle=lambda_cycle,
+    )
     return {"vec2vec": {"mi_bits": float(res["vec2vec"]["mi_bits"])}}
 
 
 def _relrep_runner(
     *, seed: int, n_anchors: int,
 ) -> dict[str, dict[str, float]]:
-    # n_anchors is not wired through; variation from seed.
-    del n_anchors
-    res = run_transducer_benchmark(steps=500, seed=seed)
+    res = run_transducer_benchmark(
+        steps=500, seed=seed, n_anchors=n_anchors,
+    )
     return {"relrep": {"mi_bits": float(res["relative_rep"]["mi_bits"])}}
 
 
