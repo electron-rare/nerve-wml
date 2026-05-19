@@ -61,7 +61,7 @@ essentials for readers.
 
 \section{Related Work}
 
-The nerve protocol sits at the intersection of four research lines. We relate each briefly below.
+The nerve protocol sits at the intersection of six research lines. We relate each briefly below.
 
 \textbf{Predictive coding.} Rao and Ballard~\cite{rao1999predictive} introduced predictive coding as a unifying interpretation of extra-classical receptive-field effects in the visual cortex, where each layer transmits its prediction downstream and receives a residual error upstream. Bastos et al.~\cite{bastos2012canonical} then proposed the canonical microcircuit for predictive coding, mapping predictions to $\gamma$-band activity in superficial layers and errors to $\theta$/$\alpha$-band activity in deep layers. Our $\gamma$/$\theta$ multiplexing (see \S\ref{sec:method}) is a direct computational transcription of this canonical microcircuit, with $\gamma$-priority replacing the biological phase-locking.
 
@@ -73,9 +73,33 @@ The nerve protocol sits at the intersection of four research lines. We relate ea
 
 Our \texttt{MI}/\texttt{H} ratio on emitted discrete codes (\S\ref{sec:info-tx}) occupies the slot this family leaves open: we measure, at the discrete protocol-output level, what Kornblith's CKA, Morcos's PWCCA, Moschella's relative representations, and Saxe's RDMs measure on continuous hidden states. Empirically we observe $\mathrm{MI}/\mathrm{H} \approx 0.953$ versus $\mathrm{CKA}$ on the corresponding argmax one-hots of $0.910$ (\S\ref{sec:info-tx}); the $4.3$-percentage-point gap tracks soft many-to-one code mappings that kernel-alignment metrics miss by construction.
 
+\textbf{Adjacent abstraction layers: model IRs and event transports.}
+Two recent lines define communication structure for brain-inspired
+systems at abstraction layers that bracket the nerve protocol, and we
+position against both to forestall a category error. The Neuromorphic
+Intermediate Representation~\cite{pedersen2024nir} is a
+\emph{static computational-graph IR} --- a hardware-agnostic instruction
+set that lets a single spiking model be compiled onto Loihi, SpiNNaker,
+or a simulator without rewriting; it standardises \emph{what graph} a
+substrate runs. The nerve protocol operates one layer above: it is a
+\emph{runtime} communication contract between already-instantiated,
+independently trained modules, with learned per-edge transducers and
+typed $(\pi, \varepsilon)$ roles, and it makes no claim about the
+internal graph of any WML. Conversely, Address-Event Representation and
+its recent UDP-over-Ethernet biohybrid formalisation~\cite{aer2025biohybrid}
+specify a \emph{transport and encoding} layer --- how individual spike
+events are timestamped, addressed, and physically carried between a
+silicon and a biological population. The nerve protocol is
+substrate-agnostic precisely because it does not fix a transport: a
+neuroletter is a typed, phase-tagged symbol whose \emph{semantics} are
+learned, and AER (or any other event bus) could serve as its physical
+carrier. NIR governs the model, AER governs the wire; nerve-wml
+governs the learned message in between, and is orthogonal to both by
+construction rather than by competition.
+
 \textbf{Knowledge distillation.} Hinton et al.~\cite{hinton2015distilling} proposed training a student network end-to-end by minimising the weighted loss $\alpha\,\mathrm{CE}(p_S(\cdot; T), p_T(\cdot; T))\,T^2 + (1-\alpha)\,\mathrm{CE}_{\mathrm{hard}}(y)$, where $T$ is a temperature that softens the teacher's class distribution. Our cross-substrate merge (Test (3), \S\ref{sec:info-tx}) is structurally different: both substrates are \emph{frozen}, only a linear transducer between their emission spaces is trained, supervision is ground-truth labels only, and the passed message is a logit vector over a $64$-code protocol alphabet rather than a softmax over $n_{\mathrm{classes}}$ label values. This separates protocol channel capacity from student learning capacity.
 
-To our knowledge, no prior system combines all five threads into a single substrate-agnostic communication protocol with an explicit discrete-code measurement methodology. The nerve protocol contributes the integration, not any of the individual techniques.
+To our knowledge, no prior system combines all six threads into a single substrate-agnostic communication protocol with an explicit discrete-code measurement methodology. The nerve protocol contributes the integration, not any of the individual techniques.
 
 \section{Method}
 \label{sec:method}
