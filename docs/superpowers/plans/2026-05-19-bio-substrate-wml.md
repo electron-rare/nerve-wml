@@ -1740,6 +1740,22 @@ feed into this plan. All five are fully encapsulated inside
 `BioFieldWML.step()` and leave the WML Protocol (N-1..N-5, W-1..W-4)
 and dream-of-kiki axioms (DR-0..DR-4) untouched.
 
+### Companion artifact — (i)+(ii) decomposition
+
+This plan is the **(i)** side of the user's "(i)+(ii)" framing: it
+delivers `BioFieldWML` as **one conformant substrate among N** under
+the existing WML Protocol, with DR-3 substrate-agnosticism preserved
+as a universal claim. The **(ii)** side — the interpretive biophysical
+sub-theory that stratifies the family of bio-grounded substrates — is
+documented separately in the companion spec
+`dream-of-kiki/docs/specs/2026-05-20-biophysical-stratification.md`.
+That spec routes the nine **(b′)**-classified references (Blum-Moyse
+coupled fields, Ursino theta-gamma neural mass, Młynarski-Hermundstad
+multimodal efficient+predictive, Heinrich MTRNN embodied grounding,
+and others) into five strata. Read both artifacts together: this plan
+is the conformant-substrate side, the stratification spec is the
+interpretive side; neither alone exhausts the deep-research integration.
+
 ### OQ defaults (document for reviewer override)
 
 > **OQ-1 (DR-0 boundary):** `BioFieldWML.step()` performs ONE
