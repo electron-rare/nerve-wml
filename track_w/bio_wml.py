@@ -84,6 +84,8 @@ class BioWML(nn.Module):
         finally:
             torch.set_rng_state(saved_rng)
 
+        self.last_latency_ms: float | None = None
+
     @classmethod
     def from_env(cls, id: int, **kwargs: Any) -> BioWML:
         """Build a BioWML backed by a real env-gated adapter.
@@ -114,9 +116,62 @@ class BioWML(nn.Module):
         return cls(id=id, client=client, **kwargs)
 
     def step(self, nerve: Nerve, t: float) -> None:
-        """Filled in fully in Task 4. Minimal honest version:
-        pull inbound, do nothing else. Replaced in Task 4."""
-        nerve.listen(self.id)
+        """One tick: listen, stimulate the culture with inbound
+        codes, decode the read-back activity into a hidden vector,
+        emit π predictions (γ) and — on surprise — ε errors (θ).
+        """
+        from nerve_core.neuroletter import Neuroletter, Phase, Role
+
+        inbound = nerve.listen(self.id)
+        # Codes to stimulate. With no inbound, probe with a single
+        # rest code so the culture/decoder still produce a hidden
+        # state (the substrate is never fully silent at the API).
+        codes = [n.code for n in inbound] if inbound else [0]
+
+        # Round-trip through the biological culture (or its mock).
+        frame = self.client.roundtrip(codes)
+        self.last_latency_ms = frame.latency_ms
+        decoded = self.client.decode_activity(frame)  # list[int]
+
+        # Pool decoded codes into a d_hidden vector by averaging the
+        # corresponding codebook rows — symmetric to embed_inbound.
+        if decoded:
+            rows = self.codebook[
+                torch.tensor([c % self.alphabet_size for c in decoded])
+            ]
+            h = rows.mean(dim=0)
+        else:
+            h = torch.zeros(self.d_hidden)
+
+        pi_logits = self.emit_head_pi(h)
+        code_pi = int(pi_logits.argmax().item())
+
+        for dst in range(nerve.n_wmls):  # type: ignore[attr-defined]
+            if dst == self.id:
+                continue
+            if nerve.routing_weight(self.id, dst) == 1.0:
+                nerve.send(Neuroletter(
+                    code=code_pi, role=Role.PREDICTION,
+                    phase=Phase.GAMMA, src=self.id, dst=dst,
+                    timestamp=t,
+                ))
+
+        # ε path. Surprise = L2 norm of the hidden state itself:
+        # a culture that produced strong evoked activity (large h)
+        # signals a mismatch against the resting prior (h ≈ 0).
+        surprise = float(h.norm().item())
+        if surprise > self.threshold_eps:
+            eps_logits = self.emit_head_eps(h)
+            code_eps = int(eps_logits.argmax().item())
+            for dst in range(nerve.n_wmls):  # type: ignore[attr-defined]
+                if dst == self.id:
+                    continue
+                if nerve.routing_weight(self.id, dst) == 1.0:
+                    nerve.send(Neuroletter(
+                        code=code_eps, role=Role.ERROR,
+                        phase=Phase.THETA, src=self.id, dst=dst,
+                        timestamp=t,
+                    ))
 
     def parameters(  # type: ignore[override]
         self, *args: Any, **kwargs: Any
