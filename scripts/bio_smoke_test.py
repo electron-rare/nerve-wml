@@ -40,6 +40,7 @@ def main() -> int:
     provider = os.environ.get(_ENV_PROVIDER, "finalspark").lower()
     print(f"[bio-smoke] provider = {provider}")
 
+    client: CL1Adapter | FinalSparkAdapter
     try:
         if provider == "cl1":
             client = CL1Adapter()
