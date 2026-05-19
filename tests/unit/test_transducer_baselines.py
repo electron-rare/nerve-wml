@@ -1,6 +1,6 @@
 import torch
 
-from track_p.transducer_baselines import ProcrustesTransducer
+from track_p.transducer_baselines import ProcrustesTransducer, RelativeRepTransducer
 
 
 def test_procrustes_fits_and_maps_to_valid_codes():
@@ -34,3 +34,28 @@ def test_procrustes_recovers_known_rotation():
     # Check that mapped codes are within valid range and have the right shape.
     assert mapped.shape == (64,)
     assert (mapped >= 0).all() and (mapped < 64).all()
+
+
+def test_relative_rep_zero_shot_maps_valid_codes():
+    torch.manual_seed(2)
+    src_cb = torch.randn(64, 32)
+    q, _ = torch.linalg.qr(torch.randn(32, 32))
+    dst_cb = src_cb @ q
+    t = RelativeRepTransducer(
+        src_codebook=src_cb, dst_codebook=dst_cb, n_anchors=16, seed=0
+    )
+    dst_code = t.forward(torch.tensor([3, 9, 60]))
+    assert dst_code.shape == (3,)
+    assert (dst_code >= 0).all() and (dst_code < 64).all()
+
+
+def test_relative_rep_invariant_to_rotation():
+    torch.manual_seed(3)
+    src_cb = torch.randn(64, 32)
+    q, _ = torch.linalg.qr(torch.randn(32, 32))
+    dst_cb = src_cb @ q  # pure rotation, anchors shared by index
+    t = RelativeRepTransducer(
+        src_codebook=src_cb, dst_codebook=dst_cb, n_anchors=32, seed=1
+    )
+    # Cosine-to-anchors is rotation-invariant -> identity recovered.
+    assert torch.equal(t.forward(torch.arange(64)), torch.arange(64))

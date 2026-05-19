@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import torch
 from torch import Tensor, nn
+from torch.nn import functional as F  # noqa: N812
 
 
 class ProcrustesTransducer(nn.Module):
@@ -64,3 +65,66 @@ class ProcrustesTransducer(nn.Module):
 
     def _src_lookup(self, src_code: Tensor) -> Tensor:
         return self._src_codebook[src_code]
+
+
+class RelativeRepTransducer(nn.Module):
+    """Anchor-based relative-representation src->dst map (zero-shot).
+
+    Moschella et al. (ICLR 2023): encode each codebook row by its vector of
+    cosine similarities to a fixed set of `n_anchors` anchor rows. Because the
+    anchors are shared by code index across src and dst, the relative encoding
+    is invariant to any rotation/reflection between the two latent spaces, so
+    no fitting is needed. A src code maps to the dst code whose relative
+    encoding is closest (cosine).
+
+    Parameters
+    ----------
+    src_codebook, dst_codebook
+        `[alphabet_size, D]` float tensors, same shape.
+    n_anchors
+        Number of anchor codes (sampled without replacement from the alphabet).
+    seed
+        RNG seed for anchor selection.
+    """
+
+    src_rel: Tensor
+    dst_rel: Tensor
+
+    def __init__(
+        self,
+        src_codebook: Tensor,
+        dst_codebook: Tensor,
+        *,
+        n_anchors: int = 32,
+        seed: int = 0,
+    ) -> None:
+        super().__init__()
+        if src_codebook.shape != dst_codebook.shape:
+            raise ValueError(
+                f"codebook shape mismatch: {src_codebook.shape} "
+                f"vs {dst_codebook.shape}"
+            )
+        alphabet = src_codebook.shape[0]
+        if not 1 <= n_anchors <= alphabet:
+            raise ValueError(f"n_anchors must be in [1, {alphabet}]")
+        gen = torch.Generator()
+        gen.manual_seed(seed)
+        anchors = torch.randperm(alphabet, generator=gen)[:n_anchors]
+        src = src_codebook.detach()
+        dst = dst_codebook.detach()
+        self.register_buffer("src_rel", self._relative(src, anchors))
+        self.register_buffer("dst_rel", self._relative(dst, anchors))
+
+    @staticmethod
+    def _relative(codebook: Tensor, anchors: Tensor) -> Tensor:
+        """`[alphabet, n_anchors]` cosine-similarity encoding."""
+        normed = F.normalize(codebook, dim=-1)
+        anchor_vecs = normed[anchors]  # [n_anchors, D]
+        return normed @ anchor_vecs.T  # [alphabet, n_anchors]
+
+    def forward(self, src_code: Tensor) -> Tensor:
+        """Map `[B]` long src codes to `[B]` long dst codes."""
+        query = F.normalize(self.src_rel[src_code], dim=-1)  # [B, n_anchors]
+        keys = F.normalize(self.dst_rel, dim=-1)  # [alphabet, n_anchors]
+        sim = query @ keys.T  # [B, alphabet]
+        return sim.argmax(dim=-1)
