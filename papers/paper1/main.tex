@@ -63,7 +63,21 @@ essentials for readers.
 
 The nerve protocol sits at the intersection of five research lines. We relate each briefly below.
 
-\textbf{Predictive coding.} Rao and Ballard~\cite{rao1999predictive} introduced predictive coding as a unifying interpretation of extra-classical receptive-field effects in the visual cortex, where each layer transmits its prediction downstream and receives a residual error upstream. Bastos et al.~\cite{bastos2012canonical} then proposed the canonical microcircuit for predictive coding, mapping predictions to $\gamma$-band activity in superficial layers and errors to $\theta$/$\alpha$-band activity in deep layers. Our $\gamma$/$\theta$ multiplexing (see \S\ref{sec:method}) is a direct computational transcription of this canonical microcircuit, with $\gamma$-priority replacing the biological phase-locking.
+\textbf{Predictive coding.} Rao and Ballard~\cite{rao1999predictive} introduced predictive coding as a unifying interpretation of extra-classical receptive-field effects in the visual cortex, where each layer transmits its prediction downstream and receives a residual error upstream. Bastos et al.~\cite{bastos2012canonical} then proposed the canonical microcircuit for predictive coding, mapping predictions to $\gamma$-band activity in superficial layers and errors to $\theta$/$\alpha$-band activity in deep layers. The framing has since been refined: Bastos et
+al.~\cite{bastos2020routing} reframe hierarchical message passing as
+\emph{predictive routing} --- a layer- and rhythm-specific mechanism in
+which top-down predictions in deep-layer $\alpha$/$\beta$ rhythms gate
+the $\gamma$-band feedforward channel, so that errors propagate only
+when predictions fail --- and Friston~\cite{friston2025pivot} adopts
+this routing reframing in 2025. The closest computational instantiation
+is the laminar neural-mass Comparator of Ruffini et
+al.~\cite{ruffini2025comparator}, which realises cross-frequency
+$\gamma$/$\theta$ coupling as an explicit predictive-routing circuit.
+Our $\gamma$/$\theta$ multiplexing (see \S\ref{sec:method}) is a
+computational transcription of this predictive-routing view rather than
+of the 2012 microcircuit alone: $\gamma$-priority is the engineering
+analogue of the rhythm-specific gating that routes prediction and error
+onto distinct channels.
 
 \textbf{Discrete latent codebooks.} van den Oord et al.~\cite{vandenoord2017neural} introduced VQ-VAE, the vector-quantized variational auto-encoder in which a continuous encoder output is snapped to one of $K$ discrete codes. We reuse the commitment-loss training recipe for each WML's local codebook (\S\ref{sec:method}). Zeghidour et al.~\cite{zeghidour2022soundstream} observed that random-init VQ training collapses onto a small subset of codes, and proposed codebook rotation --- re-seeding unused codes with live input points. Our Plan 4a experiments confirm that rotation is necessary for random-init convergence on the $64$-code alphabet (\S\ref{sec:experiments}). Liu et al.~\cite{liu2021dvnc} further demonstrated VQ bottlenecks as inter-module communication channels (DVNC), validating that discretisation improves compositional generalisation when neural modules recombine. More recently, Peng et al.~\cite{peng2025gridlikevq} introduce Grid-like Code Quantization to compress observation-action sequences in world models, drawing on grid-cell attractor dynamics as a biologically-motivated VQ prior. Zhao et al.~\cite{zhao2025channelawarevq} propose channel-aware VQ for semantic communication on discrete channels, framing VQ as a joint source-channel coding problem. Our nerve-wml is orthogonal: we treat the codebook as a fixed protocol alphabet and measure the information-theoretic alignment of substrates emitting into this alphabet, rather than optimising the codebook for a specific communication channel or world-model prior.
 
@@ -119,13 +133,21 @@ invariant (N-3: $\text{role}{=}\varepsilon \Leftrightarrow
 \text{phase}{=}\theta$) functions as a \emph{formal correctness
 contract} --- a type-checker for letter well-formedness at
 composition time --- rather than a differential computational
-mechanism. In the experiments reported in this paper all substrates
-emit $\pi$ letters in the $\gamma$ phase exclusively (\S Threats to
-Validity), so the invariant is satisfied by construction; its value
-is catching composition bugs when downstream modules inadvertently
-emit malformed letters (\S\,(7) guard-injection test). The
-Bastos-Friston 2012 cortical-microcircuit citation is preserved as
-the structural inspiration, not as a claim of empirical mechanism.
+mechanism. In the experiments reported in this paper all substrates emit $\pi$
+letters in the $\gamma$ phase exclusively (\S Threats to Validity), so
+the invariant is satisfied by construction; its value is catching
+composition bugs when downstream modules inadvertently emit malformed
+letters (\S\,(7) guard-injection test). The structural inspiration is
+the predictive-routing account of Bastos et
+al.~\cite{bastos2020routing} and Friston~\cite{friston2025pivot}, in
+which prediction and error occupy rhythm-specific channels; the earlier
+canonical-microcircuit formulation~\cite{bastos2012canonical} is the
+precursor of that account. We cite this lineage as design inspiration,
+not as a claim of empirical neural mechanism --- the N-3 invariant is a
+formal correctness contract, and the Ruffini et
+al.~\cite{ruffini2025comparator} Comparator circuit is named as the
+closest biophysical model should a future version seek a mechanistic
+grounding.
 
 \subsection{WML polymorphism}
 \texttt{MlpWML} implements the WML protocol via a 4-layer MLP and
@@ -389,6 +411,27 @@ Test~(1), this situates nerve-wml as an empirical PRH validation on
 structurally heterogeneous substrates at both continuous (pre-VQ) and
 discrete (post-VQ) representational levels. Reproducible via
 \texttt{uv run python scripts/platonic\_rh\_alignment.py}.
+
+\textit{Global versus local alignment.} Two 2026 critiques sharpen what
+a PRH-style claim may legitimately assert.
+\cite{platoscave2026} report that cross-model representational
+alignment is fragile and \emph{degrades with model scale}, and
+\cite{aristotelianprh2026} show that \emph{global} convergence is in
+large part a width/depth confounder: once alignment is null-calibrated
+against capacity-matched random baselines, only \emph{local}
+neighbourhood structure survives as a genuine cross-substrate signal.
+Our claim is deliberately the local one. The mutual-kNN kernel of
+Table~\ref{tab:platonic-knn} measures neighbourhood overlap at small
+$k$, and we report it \emph{relative to a capacity-matched random
+baseline} ($18.8\times$ at $k{=}10$) precisely so the figure is
+null-calibrated in the sense those critiques demand. We therefore claim
+that MLP and spiking-LIF substrates share \emph{local} representational
+geometry under the nerve protocol --- not that they converge to a
+single global Platonic representation. This is the conservative reading
+that the 2026 evidence supports, and it is sufficient for the
+substrate-agnostic transmission claim, which only requires that a
+decoder can recover neighbours, not that the two embedding spaces are
+globally isometric.
 
 \textbf{(7) Multi-estimator robustness (v1.5.3).} To address the
 single-estimator caveat raised by \texttt{bouba\_sens} section~6.3,
@@ -812,10 +855,11 @@ while strict\_n3=False lets them pass silently. Together, these three
 ablations establish that N-3 is a formal correctness contract --- a
 type-checker for the protocol --- rather than a differential mechanism:
 measurable impact requires deliberate violation injection rather than
-emerging from a correct pipeline. This does not invalidate the
-Bastos-Friston 2012 ancestry, since biological $\gamma / \theta$
-multiplexing is also a correctness-enforcing constraint, not a free
-parameter that tunes computational behaviour.
+emerging from a correct pipeline. This does not invalidate the predictive-routing ancestry
+(\cite{bastos2012canonical, bastos2020routing, friston2025pivot}),
+since biological $\gamma / \theta$ rhythm-specific routing is itself a
+gating constraint that determines \emph{when} error channels open, not
+a free parameter that tunes computational behaviour.
 
 Wiring the adaptive-alphabet operations into live WMLs at training
 time (rather than post-hoc on checkpoints) is tracked in spec \S 13
