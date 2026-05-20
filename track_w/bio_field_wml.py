@@ -157,6 +157,6 @@ class BioFieldWML(nn.Module):
                     timestamp=t,
                 ))
 
-    def parameters(self, *args: object, **kwargs: object) -> Iterable[Tensor]:  # type: ignore[override]
+    def parameters(self, recurse: bool = True) -> Iterable[Tensor]:  # type: ignore[override]
         """W-2: parameters() includes codebook and all internal weights."""
-        return super().parameters(*args, **kwargs)
+        return super().parameters(recurse=recurse)

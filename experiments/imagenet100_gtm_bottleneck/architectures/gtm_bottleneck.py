@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from torch import Tensor
 
 from track_p.multiplexer import GammaThetaConfig, GammaThetaMultiplexer
@@ -71,9 +71,9 @@ class GTMBottleneck(nn.Module):
         ).squeeze(1)
 
     def encode(self, features: Tensor) -> Tensor:
-        B = features.size(0)
+        b = features.size(0)
         logits = self.encode_logits(features).view(
-            B, self.n_symbols, self.alphabet_size
+            b, self.n_symbols, self.alphabet_size
         )
         idx, soft_const = self._gumbel_path(logits)
         with torch.set_grad_enabled(True):
