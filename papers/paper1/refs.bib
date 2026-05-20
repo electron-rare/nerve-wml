@@ -121,7 +121,27 @@
   year          = {2026},
   eprint        = {2602.14486},
   archivePrefix = {arXiv},
-  note          = {Global convergence is a width/depth confounder; null-calibrated baselines reveal only local-neighbourhood structure as a genuine cross-substrate signal}
+  primaryClass  = {cs.LG},
+  note          = {Null-calibration via permutation with Type-I guarantees; Proposition~4.1 gives $\mathrm{CKA}$ null baseline of order $O(d/n)$ via random matrix theory; Proposition~4.2 gives $\mathbb{E}[\mathrm{mKNN}(X,Y)] = k/(n-1)$; calibrated score $s_{\text{cal}} = \max((s_{\text{obs}}-\tau_\alpha)/(s_{\max}-\tau_\alpha), 0)$. Spectral metrics (CKA) collapse to null after calibration; local-neighbourhood metrics (mKNN, CKNNA) survive cross-substrate}
+}
+
+@inproceedings{royvetterli2007erank,
+  author    = {Roy, Olivier and Vetterli, Martin},
+  title     = {The Effective Rank: A Measure of Effective Dimensionality},
+  booktitle = {2007 15th European Signal Processing Conference (EUSIPCO)},
+  year      = {2007},
+  pages     = {606--610},
+  note      = {Effective rank defined as $\exp(H_{\text{spec}})$ where $H_{\text{spec}}$ is the Shannon entropy of normalised singular values}
+}
+
+@misc{wei2024differank,
+  author        = {Wei, Lai and Tan, Zhiquan and Li, Chenghai and Wang, Jindong and Huang, Weiran},
+  title         = {Large Language Model Evaluation via Matrix Nuclear-Norm},
+  year          = {2024},
+  eprint        = {2410.10672},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CL},
+  note          = {Introduces \emph{Diff-eRank}, an effective-rank-style metric for LLM hidden-state collapse analysis}
 }
 
 @inproceedings{peng2025gridlikevq,

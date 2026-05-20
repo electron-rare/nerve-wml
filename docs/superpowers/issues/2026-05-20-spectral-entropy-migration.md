@@ -19,7 +19,10 @@ null = 0.32  >  gtm = 0.20  >  simple_gating = 0.08
 
 A trained-but-broken model (null arm: GTM trained on shuffled supervision)
 concentrates variance on a single mode and therefore scores **higher** than a
-model that successfully decomposes the task. The semantics are inverted.
+model that successfully decomposes the task. The semantics are inverted. The
+permutation-shuffled null arm used to detect this inversion is a special case
+of the formal null-calibration framework of Gröger, Wen & Brbić (2026,
+arXiv:2602.14486), which we adopt as our cross-condition baseline methodology.
 
 ## Replacement
 
@@ -27,6 +30,12 @@ model that successfully decomposes the task. The semantics are inverted.
 on `master` at SHA `076f770`). It is defined as
 `H = -Σ p_i log p_i` over the normalised eigenvalues of the centered carrier
 batch's Gram matrix.
+
+*Note: `spectral_entropy = log(effective_rank)` is the standard
+collapse-analysis quantity introduced by Roy & Vetterli (2007, EUSIPCO) and
+reapplied to LLM representations by Wei et al. (2024, Diff-eRank,
+arXiv:2410.10672). This is alignment with established practice, not a
+methodological proposal.*
 
 On the same 4-arm × 50-seed × 3-host ablation:
 
