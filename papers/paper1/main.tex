@@ -862,6 +862,83 @@ since biological $\gamma / \theta$ rhythm-specific routing is itself a
 gating constraint that determines \emph{when} error channels open, not
 a free parameter that tunes computational behaviour.
 
+\textbf{Carrier-spectrum metric — applying the standard effective-rank diagnostic.}
+A pilot run of the GTM (gamma-theta multiplex) ablation reported a
+\texttt{\_synchrony\_index} per arm, defined as the fraction of carrier
+variance carried by the top principal component of the centered batch.
+The intended reading was ``high \texttt{synchrony\_index} = collapse onto a
+single mode''. A 4-arm replication on $50$ seeds $\times$ $3$ hosts
+(\texttt{null}, \texttt{akorn\_best}, \texttt{gtm},
+\texttt{simple\_gating}; see \texttt{docs/superpowers/research/2026-05-20-synchrony-replacement.md})
+shows this proxy is \emph{anti-monotone} with respect to the intended
+semantics: $\text{null}{=}0.32 > \text{gtm}{=}0.20 > \text{simple\_gating}{=}0.08$
+(paired Wilcoxon $p < 10^{-15}$). A trained-but-broken model
+(null arm: GTM trained on shuffled supervision) concentrates variance
+on one mode and therefore scores \emph{higher} than a model that
+successfully decomposes the task, inverting the intended reading. This
+anti-monotonicity is precisely the failure mode that effective-rank-style
+metrics \cite{royvetterli2007erank} were originally introduced to avoid.
+
+We therefore replace \texttt{\_synchrony\_index} with the spectral-entropy
+form of effective rank \cite{royvetterli2007erank}, $H_{\text{spec}} =
+-\sum_i p_i \log p_i$ with $p_i = \sigma_i^2 / \sum_j \sigma_j^2$ ---
+the standard collapse-analysis quantity, recently reapplied to
+representation-evaluation in LLM hidden states \cite{wei2024differank}.
+A batch-size sensitivity sweep over $B \in \{64, 128, 256, 512\}$
+(50 seeds $\times$ 4 arms $\times$ 4 batch sizes; see
+\texttt{docs/superpowers/research/2026-05-20-renf10-batch-sensitivity.md})
+shows that the \emph{strict 4-arm ordering} is $B$-dependent and only
+holds at $B = 256$; at $B \in \{64, 128, 512\}$ the
+\texttt{akorn\_best} arm exhibits high seed-variance
+($\sigma_{H_{\text{spec}}} \approx 0.6$ across seeds vs.\
+$\sigma \approx 0.01$ for \texttt{gtm}) and its rank against
+\texttt{null} flips with the random-init realisation. The robust
+claims that survive this sweep at every $B$ are two pairwise
+gaps: $H_{\text{spec}}(\text{gtm}) > H_{\text{spec}}(\text{null})$
+($\Delta \geq 0.05$ bits, paired Wilcoxon $p < 10^{-15}$ at all $B$),
+and $H_{\text{spec}}(\text{gtm}) \ll H_{\text{spec}}(\text{simple\_gating})$
+(gap $\geq 1.0$ bits, paired Wilcoxon $p < 10^{-15}$ at all $B$).
+At the originally-reported $B = 256$ point the four arms are
+$\text{null} (1.74 \pm 0.13) <
+ \text{akorn\_best} (2.04 \pm 0.6) <
+ \text{gtm} (2.19 \pm 0.01) <
+ \text{simple\_gating} (3.62 \pm 0.02)$.
+The semantics are direct: high entropy means information is distributed
+across many effective modes; low entropy means collapse onto few modes.
+\texttt{simple\_gating}, which encodes $7$ symbols $\times$ $64$ codes in
+independent slots, naturally occupies the most modes; the null arm
+collapses; \texttt{gtm} sits in between. We report \texttt{akorn\_best}
+as an \emph{intermediate but high-variance} arm rather than a fourth
+strictly-ranked position, because its placement against \texttt{null}
+is not stable across batch sizes.
+
+With spectral entropy as the carrier-spectrum metric and a
+permutation-shuffled null arm as the cross-condition baseline ---
+a special case of the null-calibration framework formalised by
+\cite{aristotelianprh2026} --- the defensible claim becomes:
+\emph{GTM exhibits a spectral entropy
+($H_{\text{spec}}(\text{gtm}) \in [2.14, 2.20]$ across
+$B \in \{64,128,256,512\}$, $\sigma \approx 0.01$)
+significantly higher than the degenerate null arm at every $B$ tested
+($\Delta \geq 0.05$ bits, $p < 10^{-15}$) and significantly lower than
+\texttt{simple\_gating}'s independent-symbol decomposition at every $B$
+tested (gap $\geq 1.0$ bits, $p < 10^{-15}$). GTM occupies the
+gtm-and-akorn region of the spectrum, below \texttt{simple\_gating}'s
+per-symbol decomposition; this position reflects band-multiplexing
+compression: GTM encodes $7$ symbols into fewer effective modes than
+a one-symbol-per-slot encoding would require.} This is a claim of
+\emph{significant pairwise gaps against two reference arms}, not a
+strict 4-arm ranking and not extremality --- weaker than the original
+``GTM does not collapse'' framing but defensible without the
+metric-monotonicity caveat and robust to batch-size variation.\footnote{%
+The \texttt{\_synchrony\_index} routine in
+\texttt{track\_p/multiplexer.py} still uses the top-PC variance
+definition pending a production-code migration PR
+(\texttt{docs/superpowers/issues/2026-05-20-spectral-entropy-migration.md}).
+The quantity reported in this paper is \texttt{spectral\_entropy}
+from \texttt{scripts/synchrony\_alternatives.py}, committed on
+\texttt{master} at SHA \texttt{076f770}.}
+
 Wiring the adaptive-alphabet operations into live WMLs at training
 time (rather than post-hoc on checkpoints) is tracked in spec \S 13
 Q1. The neuromorphic mock runner needs a trained-LIF tightening pass
