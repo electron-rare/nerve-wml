@@ -19,21 +19,20 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from sklearn.metrics import mutual_info_score
 
-from experiments.benchmark_multiplexer_vs_baselines.architectures.gtm import GTMBridge
-from experiments.benchmark_multiplexer_vs_baselines.architectures.recursive_link import (
-    RecursiveLinkBridge,
-)
-from experiments.benchmark_multiplexer_vs_baselines.architectures.mlp_bridge import (
-    MLPBridge,
-)
 from experiments.benchmark_multiplexer_vs_baselines.architectures.cross_attention import (
     CrossAttentionBridge,
 )
+from experiments.benchmark_multiplexer_vs_baselines.architectures.gtm import GTMBridge
+from experiments.benchmark_multiplexer_vs_baselines.architectures.mlp_bridge import (
+    MLPBridge,
+)
+from experiments.benchmark_multiplexer_vs_baselines.architectures.recursive_link import (
+    RecursiveLinkBridge,
+)
 from track_w.tasks.flow_proxy import FlowProxyTask
-
 
 SEEDS = [0, 17, 42, 73, 101]
 ARCHITECTURES = {

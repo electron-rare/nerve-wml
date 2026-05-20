@@ -18,9 +18,9 @@ from pathlib import Path
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 import torchvision
-import torchvision.transforms as T
+import torchvision.transforms as T  # noqa: N812
 from torch.utils.data import DataLoader
 
 from experiments.imagenet100_gtm_bottleneck.architectures.gtm_bottleneck import (

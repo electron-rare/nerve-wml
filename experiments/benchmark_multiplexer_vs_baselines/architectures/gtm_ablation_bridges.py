@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from torch import Tensor
 
 from experiments.benchmark_multiplexer_vs_baselines.architectures.gtm_ablations import (
@@ -74,17 +74,17 @@ class _AblationBridge(nn.Module):
         return pooled, soft_iq_flat
 
     def encode(self, x: Tensor) -> Tensor:
-        B = x.size(0)
+        b = x.size(0)
         logits = self.encode_logits(x).view(
-            B, self.k_symbols, self.alphabet_size
+            b, self.k_symbols, self.alphabet_size
         )
         pooled, soft_iq = self._gtm_pass(logits)
         return self.encode_mix(torch.cat([pooled, soft_iq], dim=-1))
 
     def decode(self, code: Tensor) -> Tensor:
-        B = code.size(0)
+        b = code.size(0)
         logits = self.decode_logits(code).view(
-            B, self.k_symbols, self.alphabet_size
+            b, self.k_symbols, self.alphabet_size
         )
         pooled, soft_iq = self._gtm_pass(logits)
         return self.decode_mix(torch.cat([pooled, soft_iq], dim=-1))

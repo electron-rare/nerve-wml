@@ -8,7 +8,8 @@ This package houses :
 - runner.py       — 5-seed sweep harness (Task 13)
 - analyse.py      — Welch's t-test + Bonferroni analysis (Task 15)
 """
-from typing import Iterator, Protocol
+from collections.abc import Iterator
+from typing import Protocol
 
 import torch.nn as nn
 from torch import Tensor

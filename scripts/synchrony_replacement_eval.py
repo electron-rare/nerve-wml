@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from scipy import stats
-from torch.nn import functional as F
+from torch.nn import functional as F  # noqa: N812
 from torch.optim import Adam
 
 from scripts.synchrony_alternatives import (
@@ -39,7 +39,9 @@ _METRICS = {
 }
 
 
-def _train_and_carrier_gtm(codes: torch.Tensor, steps: int, seed: int, device: str = "cpu") -> torch.Tensor:
+def _train_and_carrier_gtm(
+    codes: torch.Tensor, steps: int, seed: int, device: str = "cpu"
+) -> torch.Tensor:
     cfg = GammaThetaConfig(symbols_per_theta=codes.shape[-1])
     g = GammaThetaMultiplexer(cfg=cfg, seed=seed).to(device)
     opt = Adam(g.parameters(), lr=0.02)
@@ -74,7 +76,9 @@ def _train_and_carrier_simple(codes: torch.Tensor, steps: int, device: str = "cp
         return m.forward(codes).detach().cpu()
 
 
-def _train_and_carrier_akorn_best(codes: torch.Tensor, steps: int, device: str = "cpu") -> torch.Tensor:
+def _train_and_carrier_akorn_best(
+    codes: torch.Tensor, steps: int, device: str = "cpu"
+) -> torch.Tensor:
     """AKOrN with the Renf 1 winning config (n_osc=64, n_steps=32, lr=0.05)."""
     m = KuramotoMultiplexer(
         alphabet_size=64, n_symbols=codes.shape[-1],
@@ -94,7 +98,9 @@ def _train_and_carrier_akorn_best(codes: torch.Tensor, steps: int, device: str =
         return m.forward(codes).detach().cpu()
 
 
-def _train_and_carrier_null(codes: torch.Tensor, steps: int, seed: int, device: str = "cpu") -> torch.Tensor:
+def _train_and_carrier_null(
+    codes: torch.Tensor, steps: int, seed: int, device: str = "cpu"
+) -> torch.Tensor:
     """GTM trained on shuffled codes vs original codes -> degenerate."""
     g_rng = torch.Generator()
     g_rng.manual_seed(seed + 9973)
@@ -157,7 +163,10 @@ def main() -> int:
     t0 = time.perf_counter()
     seeds = list(range(args.seeds))
     workers = args.workers or min(len(seeds), mp.cpu_count())
-    print(f"running {len(seeds)} seeds x 4 arms x 4 metrics on {workers} workers, device={args.device}")
+    print(
+        f"running {len(seeds)} seeds x 4 arms x 4 metrics on "
+        f"{workers} workers, device={args.device}"
+    )
     if workers > 1:
         with mp.Pool(workers) as pool:
             results = pool.map(

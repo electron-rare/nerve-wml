@@ -31,7 +31,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from sklearn.metrics import mutual_info_score
 
 from experiments.benchmark_multiplexer_vs_baselines.architectures.cross_attention import (
