@@ -31,7 +31,6 @@ from track_p.transducer_baselines import (
     SimpleGatingMultiplexer,
 )
 
-
 _METRICS = {
     "spectral_entropy":   spectral_entropy,
     "participation_ratio": participation_ratio,

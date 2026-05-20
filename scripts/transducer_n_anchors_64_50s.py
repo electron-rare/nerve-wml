@@ -16,7 +16,6 @@ from scipy import stats
 
 from scripts.transducer_baselines_pilot import run_transducer_benchmark
 
-
 _OUT = Path("docs/superpowers/research/2026-05-20-transducer-anchors64-50s.json")
 
 
