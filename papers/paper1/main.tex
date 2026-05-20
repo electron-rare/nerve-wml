@@ -862,6 +862,55 @@ since biological $\gamma / \theta$ rhythm-specific routing is itself a
 gating constraint that determines \emph{when} error channels open, not
 a free parameter that tunes computational behaviour.
 
+\textbf{Carrier-spectrum metric — from \texttt{synchrony\_index} to spectral entropy.}
+A pilot run of the GTM (gamma-theta multiplex) ablation reported a
+\texttt{\_synchrony\_index} per arm, defined as the fraction of carrier
+variance carried by the top principal component of the centered batch.
+The intended reading was ``high \texttt{synchrony\_index} = collapse onto a
+single mode''. A 4-arm replication on $50$ seeds $\times$ $3$ hosts
+(\texttt{null}, \texttt{akorn\_best}, \texttt{gtm},
+\texttt{simple\_gating}; see \texttt{docs/superpowers/research/2026-05-20-synchrony-replacement.md})
+shows this metric is \emph{anti-monotone} with respect to the intended
+semantics: $\text{null}{=}0.32 > \text{gtm}{=}0.20 > \text{simple\_gating}{=}0.08$
+(paired Wilcoxon $p < 10^{-15}$). A trained-but-broken model
+(null arm: GTM trained on shuffled supervision) concentrates variance
+on one mode and therefore scores \emph{higher} than a model that
+successfully decomposes the task, inverting the intended reading.
+
+We replace \texttt{\_synchrony\_index} with the
+\emph{spectral entropy} of the centered carrier batch's Gram matrix,
+$H = -\sum_i p_i \log p_i$, where $p_i$ are the normalized eigenvalues.
+On the same $4$-arm $\times$ $50$-seed $\times$ $3$-host ablation,
+spectral entropy yields the monotone ordering
+$\text{null} (1.96 \pm 0.13) <
+ \text{akorn\_best} (1.97 \pm 0.61) <
+ \text{gtm} (2.17 \pm 0.01) <
+ \text{simple\_gating} (3.46 \pm 0.02)$,
+with every consecutive gap significant at paired Wilcoxon $p = 1.78 \times 10^{-15}$.
+The semantics are direct: high entropy means variance is distributed
+across many effective modes; low entropy means collapse onto few modes.
+\texttt{simple\_gating}, which encodes $7$ symbols $\times$ $64$ codes in
+independent slots, naturally occupies the most modes; the null arm
+collapses; \texttt{gtm} and \texttt{akorn\_best} sit in between.
+
+With spectral entropy as the carrier-spectrum metric, the defensible
+claim becomes: \emph{GTM exhibits a spectral entropy
+($2.17 \pm 0.01$) significantly higher than the degenerate null arm
+and significantly lower than \texttt{simple\_gating}'s independent-symbol
+decomposition. The intermediate position reflects band-multiplexing
+compression: GTM encodes $7$ symbols into fewer effective modes than
+a one-symbol-per-slot encoding would require.} This is a claim of
+\emph{significant intermediate position}, not extremality --- weaker
+than the original ``GTM does not collapse'' framing but defensible
+without the metric-monotonicity caveat.\footnote{%
+The \texttt{\_synchrony\_index} routine in
+\texttt{track\_p/multiplexer.py} still uses the top-PC variance
+definition pending a production-code migration PR
+(\texttt{docs/superpowers/issues/2026-05-20-spectral-entropy-migration.md}).
+The quantity reported in this paper is \texttt{spectral\_entropy}
+from \texttt{scripts/synchrony\_alternatives.py}, committed on
+\texttt{master} at SHA \texttt{076f770}.}
+
 Wiring the adaptive-alphabet operations into live WMLs at training
 time (rather than post-hoc on checkpoints) is tracked in spec \S 13
 Q1. The neuromorphic mock runner needs a trained-LIF tightening pass
