@@ -25,11 +25,11 @@ HYPNEUM-PLANS/2026-05-10-niveau8-three-experiments.md Task 13.
 from __future__ import annotations
 
 import math
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from torch import Tensor
 
 from track_p.multiplexer import GammaThetaConfig, GammaThetaMultiplexer
@@ -133,17 +133,17 @@ class GTMBridge(nn.Module):
     # ------------------------------------------------------------ public
 
     def encode(self, x: Tensor) -> Tensor:
-        B = x.size(0)
+        b = x.size(0)
         logits = self.encode_logits(x).view(
-            B, self.k_symbols, self.alphabet_size
+            b, self.k_symbols, self.alphabet_size
         )
         pooled, soft_iq = self._gtm_pass(logits)
         return self.encode_mix(torch.cat([pooled, soft_iq], dim=-1))
 
     def decode(self, code: Tensor) -> Tensor:
-        B = code.size(0)
+        b = code.size(0)
         logits = self.decode_logits(code).view(
-            B, self.k_symbols, self.alphabet_size
+            b, self.k_symbols, self.alphabet_size
         )
         pooled, soft_iq = self._gtm_pass(logits)
         return self.decode_mix(torch.cat([pooled, soft_iq], dim=-1))
