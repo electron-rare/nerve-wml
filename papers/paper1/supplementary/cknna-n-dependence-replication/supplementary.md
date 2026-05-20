@@ -1,68 +1,76 @@
 ---
-title: "CKNNA is N-dependent: a scale artefact in mutual k-NN representational alignment"
+title: "Empirical replication of Gröger et al. (2026) null-calibration predictions on a synthetic Gaussian substrate"
 author:
   - Hypneum Lab
 date: 2026-05-20
 abstract: |
-  Mutual k-nearest-neighbour alignment metrics (CKNNA, mutual-kNN
-  agreement) have become a standard tool for testing representational
-  convergence between models, modalities, and brains. We document
-  and quantify a scale artefact: at constant signal-to-noise ratio,
-  CKNNA decreases monotonically as the sample size N grows. On a
-  1750-cell synthetic benchmark (8 metrics × 7 values of N × 5 noise
-  levels × 50 seeds), CKNNA@k=10 drops from 0.924 ± 0.005 at N=256
-  to 0.873 ± 0.001 at N=16384 while the noise model and the
-  underlying alignment are held fixed; the matched shuffled-null arm
-  drops from 0.040 to 0.001 over the same range. The artefact admits
-  a simple explanation in terms of the k/N → 0 chance baseline of
-  mutual k-NN agreement. We argue that the directly comparable
-  cross-paper quantity is the paired signal-vs-null separation
-  (Cohen's d_z), which is invariant to this artefact and grows
-  monotonically from d_z ≈ 135 at N=256 to d_z ≈ 1311 at N=16384 on
-  the same data. Cross-study CKNNA comparisons that vary N without
-  reporting a null-arm separation are therefore systematically
-  biased, with the direction of the bias opposite to what is often
-  assumed in scaling experiments.
+  Gröger, Wen & Brbić (2026) formalise null-calibration for
+  representational-alignment metrics: their Proposition 4.1 derives an
+  $O(d/n)$ random-matrix null baseline for linear CKA and their
+  Proposition 4.2 gives $\mathbb{E}[\mathrm{mKNN}(X,Y)] = k/(n-1)$ as
+  the corresponding null baseline for mutual $k$-NN metrics (CKNNA,
+  mutual-kNN agreement). Under their framework, raw CKNNA scores at
+  fixed $k$ should drift downward as $n$ grows because the
+  scoreable range $(k/n, 1]$ widens, and the natural artefact-free
+  quantity is the calibrated signal-vs-null separation. This
+  supplementary note reports independent empirical confirmation of
+  those predictions on a synthetic substrate disjoint from their
+  image-text PRH setup. On a 1750-cell sweep (8 metrics × 7 values
+  of $N$ spanning ~1.8 decades from 256 to 16384, i.e. 6 doublings ×
+  5 noise levels × 50 seeds), CKNNA@k=10 drops from 0.924 ± 0.005 at
+  $N=256$ to 0.873 ± 0.001 at $N=16384$ while the alignment is held
+  fixed; the matched shuffled-null arm drops from 0.040 to 0.001
+  over the same range, tracking $k/(N-1)$ as predicted. The paired
+  signal-vs-null separation (Cohen's $d_z$) grows monotonically from
+  $d_z \approx 135$ at $N=256$ to $d_z \approx 1311$ at $N=16384$,
+  inverting the direction of the apparent effect on the raw score.
+  We frame these observations as an empirical replication of the
+  Gröger et al. predictions on a synthetic Gaussian substrate and
+  use them to motivate the null-arm protocol applied to the main
+  paper's ablations.
 bibliography: refs.bib
 ---
 
 # 1. Introduction
 
-The Platonic Representation Hypothesis (PRH) [@huh2024platonic]
-sparked a wave of cross-substrate alignment work, much of which uses
-*mutual k-nearest-neighbour* metrics — most prominently CKNNA — as the
-canonical alignment score. CKNNA was attractive precisely because it
-sidesteps known scale-sensitivity issues with kernel-based metrics
-such as CKA and (biased) HSIC [@kornblith2019similarity]: it is
-permutation-invariant, kernel-free, and trivially bounded in $[0,1]$.
+**This note is a supplementary empirical replication, not an
+independent contribution.** Gröger, Wen & Brbić
+(2026) [@aristotelianprh2026] established a formal null-calibration
+framework for representational-alignment metrics, deriving explicit
+random-matrix null baselines for both spectral metrics (linear CKA,
+their Proposition 4.1) and local-neighbourhood metrics (mutual $k$-NN
+including CKNNA, their Proposition 4.2: $\mathbb{E}[\mathrm{mKNN}(X,
+Y)] = k/(n-1)$ under random pairing). Their main empirical claim is
+that spectral cross-modal "convergence" reported by the Platonic
+Representation Hypothesis [@huh2024platonic] disappears after
+null-calibration, while local-neighbourhood structure survives —
+motivating an "Aristotelian" reinterpretation. They also propose a
+calibration map $s_{\mathrm{cal}} = \max((s_{\mathrm{obs}} -
+\tau_\alpha) / (s_{\max} - \tau_\alpha), 0)$ that gives a Type-I
+controlled effect-size readout.
 
-Two recent follow-ups have started to qualify the PRH claim. *Back
-into Plato's Cave* [@platoscave2026] reports that cross-modal CKNNA
-degrades as datasets are scaled to millions of samples; an
-Aristotelian-view replication [@aristotelianprh2026] reports that
-global convergence is largely a width/depth confounder while
-local-neighbourhood structure survives. Both papers vary N as part
-of their scaling protocol, and both interpret falling CKNNA as
-substantive evidence about the alignment.
+The substrate they study is image-text embedding pairs at PRH-scale
+($n \approx 1024$). The purpose of this supplementary note is to
+record an **independent empirical replication of two of their
+predictions on a synthetic Gaussian substrate** that is disjoint from
+that setup, both to corroborate the predictions across substrate
+types and to motivate the paired-null protocol used by the main
+paper.
 
-This note documents that **CKNNA is intrinsically N-dependent at
-fixed signal**. The effect is not subtle: on a controlled synthetic
-benchmark in which the alignment and the noise process are held
-exactly constant, CKNNA drops by ~0.05 absolute (~6% relative) over
-a 64× range of N. We show that the paired signal-vs-null separation,
-expressed in standardised effect-size units (Cohen's $d_z$), is the
-quantity that is invariant to this artefact and that should be
-preferred for cross-paper comparison.
+We report two empirical observations on a 1750-cell sweep that hold
+the alignment and the noise process exactly constant while varying
+$n$ over six doublings (~1.8 decades, $N \in \{256, 512, 1024, 2048,
+4096, 8192, 16384\}$):
 
-The contribution is two findings, each empirically quantified on
-1750 cells from a single reproducible run:
+(D1) **Raw CKNNA decreases monotonically in $N$ at constant
+signal.** This is the predicted consequence of the $k/(n-1)$ null
+baseline (Proposition 4.2 of [@aristotelianprh2026]); we quantify
+its magnitude on our substrate.
 
-(D1) **CKNNA decreases monotonically in N at constant signal.**
-This is a metric property, not a substrate property.
-
-(D2) **Signal-vs-null $d_z$ is the cross-paper-comparable
-quantity.** It is monotone non-decreasing in N for the same data
-that drives D1.
+(D2) **Paired signal-vs-null Cohen's $d_z$ grows monotonically in
+$N$ on the same data.** This is the artefact-free quantity in
+the spirit of Gröger et al.'s $s_{\mathrm{cal}}$, expressed in
+standardised effect-size units.
 
 # 2. Method
 
@@ -207,13 +215,15 @@ $N$. At fixed $\sigma$ the true alignment claims a fixed fraction
 of the available range, *not* a fixed absolute score, and this
 manifests as a downward drift.
 
-**Implication for replication studies.** Both
-[@platoscave2026] and [@aristotelianprh2026] interpret falling
-CKNNA across a scaling sweep as substantive evidence about
-representational degradation. Our data suggest that some — possibly
-much — of that effect is the metric, not the system. We do not have
-the data to say *how much*; that would require redoing those
-analyses with a paired shuffled-null arm and reporting $d_z$.
+**Implication for replication studies.** [@platoscave2026]
+interprets falling CKNNA across a scaling sweep as substantive
+evidence about representational degradation. Our data corroborate
+the prediction of [@aristotelianprh2026] that some — possibly much
+— of that effect is the metric, not the system, and reinforce their
+recommendation to report a null-calibrated effect size rather than
+the raw score. We do not have the data to say *how much* of the
+Plato's-Cave effect is artefact vs substrate; that would require
+redoing that analysis with the Gröger et al. calibration map.
 
 We do not interpret this as a criticism of those works — both report
 N explicitly and the drift is consistent across their conditions,
@@ -230,13 +240,15 @@ which are now widespread.
    counterpart on the same $N$ and report the paired Cohen's $d_z$.
    This is what we recommend for cross-paper headline claims.
 
-**Relation to known issues.** That mutual-k-NN agreement has a
-non-trivial chance baseline is not new; it is implicit in the
-information-retrieval literature. What is new is the empirical
-quantification of how much CKNNA scores drift on a controlled
-substrate, and the observation that the natural remedy ($d_z$
-against a paired shuffled null) is cheap and inverts the direction
-of the apparent effect.
+**Relation to prior work.** The $k/(n-1)$ chance baseline of
+mutual-$k$-NN agreement is formally established by Proposition 4.2
+of [@aristotelianprh2026]; the present note adds an empirical
+quantification on a Gaussian synthetic substrate (disjoint from
+their image-text PRH cells) and confirms that the paired $d_z$
+remedy is cheap and inverts the direction of the apparent effect.
+The effective-rank/spectral-entropy diagnostic used elsewhere in
+the main paper is the canonical Roy & Vetterli (2007) measure,
+recently reapplied to LLM hidden-state collapse by [@wei2024differank].
 
 # 5. Limitations
 
@@ -287,7 +299,7 @@ relevant artefacts are:
 - `scripts/macm1_scientific_eval.py` — the driver script. Re-run
   with `--device mps --seeds 50 --out result.json` on Apple
   Silicon, or `--device cpu` on any host with PyTorch ≥ 2.11.
-- `papers/notes/2026-05-20-cknna-scale-artefact/make_figures.py` —
+- `papers/paper1/supplementary/cknna-n-dependence-replication/make_figures.py` —
   reads the JSON above and regenerates Figures 1 and 2.
 
 The figure script is deterministic given the JSON; no random seed

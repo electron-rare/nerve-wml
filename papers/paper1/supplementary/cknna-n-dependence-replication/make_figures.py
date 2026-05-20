@@ -1,4 +1,4 @@
-"""Generate figures for the CKNNA scale-artefact note.
+"""Generate figures for the CKNNA N-dependence supplementary replication.
 
 Reads the 1750-cell scientific evaluation JSON committed at
 docs/superpowers/research/2026-05-20-macm1-scientific-eval.json
@@ -6,7 +6,7 @@ and writes two PNG figures into ./figures/.
 
 Run from the repository root:
 
-    uv run python papers/notes/2026-05-20-cknna-scale-artefact/make_figures.py
+    uv run python papers/paper1/supplementary/cknna-n-dependence-replication/make_figures.py
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parents[2]
+REPO = HERE.parents[3]
 DATA = REPO / "docs" / "superpowers" / "research" / "2026-05-20-macm1-scientific-eval.json"
 OUT = HERE / "figures"
 OUT.mkdir(exist_ok=True)
