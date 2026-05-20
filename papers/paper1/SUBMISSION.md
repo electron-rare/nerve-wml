@@ -2,15 +2,26 @@
 
 ## Status
 
-Final draft state at master `acbdc34`. Build verified via
-`pdflatex + bibtex + 2x pdflatex` (TeX Live 2026).
+Final draft state at master `de05169` (post-supplementary-merge). Build
+verified via `pdflatex + bibtex + 2x pdflatex` (TeX Live 2026) after
+regenerating `figures/cycle_trace.pdf`.
 
-- Output: **12 pages, 515,695 bytes** (`main.pdf`).
+- Output: **14 pages, 527,718 bytes** (`main.pdf`).
 - Citations: 24/24 resolve; **zero** `Citation undefined` warnings.
 - Boxes: zero Overfull/Underfull warnings.
-- Known caveat: `figures/cycle_trace.pdf` is referenced but missing
-  on master; pdflatex falls back to draft outline. Must be added or
-  the `\includegraphics` line dropped before arXiv upload.
+
+## Pre-build figure regeneration
+
+The repository's `.gitignore` excludes generated PDFs in
+`papers/paper1/figures/`. Before any build, regenerate them via:
+
+```bash
+uv run --with matplotlib python -c "from scripts.render_paper_figures import render_cycle_trace; render_cycle_trace()"
+```
+
+(Add the other `render_*` calls per `scripts/render_paper_figures.py` if
+those figures are also missing — the script regenerates each from
+golden artefacts under `tests/golden/`.)
 
 ## Bundle composition for arXiv upload
 
@@ -21,7 +32,7 @@ Files to upload (tarball, top-level flat or with `figures/` subdir):
 - `main.bbl` (compiled bibliography — arXiv accepts both `.bib` and
   `.bbl`; including `.bbl` avoids cross-platform pdflatex issues)
 - `figures/*.{pdf,png}` (only those actually `\includegraphics`'d):
-  - `figures/cycle_trace.pdf` (MISSING — see caveat above)
+  - `figures/cycle_trace.pdf` (regenerate before upload — see above)
   - `figures/w4_forgetting.pdf`
   - `figures/p1_dead_curve.pdf`
   - `figures/w2_histogram.pdf`
