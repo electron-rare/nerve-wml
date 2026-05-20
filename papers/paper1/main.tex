@@ -833,6 +833,35 @@ priority rule suffices in simulation; a phase-locked oscillator
 regime would give the same invariant without the rule and is a
 natural next step.
 
+\subsection{Untested Empirical Scope}
+
+\emph{We enumerate explicitly what has not been empirically validated, to delimit the scope of the claims made in this paper.}
+
+\begin{enumerate}
+\item \textbf{Synthetic Gaussian substrates only.} The scientific evaluation conducted on macM1 (1750 cells across 50 seeds, 8 metrics, Renf 6 in \texttt{docs/superpowers/research/}) uses purely synthetic Gaussian noise: $x = \mathrm{randn}$, $y = x + \sigma\varepsilon$. Real model representations---LLM hidden states, vision embeddings, neuroscience recordings---may exhibit different algebraic and statistical structure. The supplementary CKNNA N-dependence replication shows the predicted decay that we report; whether real codebooks on real model embeddings exhibit the same decay is conjecture pending empirical validation on live model checkpoints.
+
+\item \textbf{BioWML never validated against real CL1/FinalSpark API.} The substrate-agnostic claim extends to BioWML by Protocol conformance---the four WML classes implement the same contract---rather than by empirical accuracy parity with MlpWML, LifWML, and TransformerWML on a shared task. Validation against a real bioculture API (CL1 Petri-dish, FinalSpark array) has not been undertaken; a runbook exists at \texttt{docs/superpowers/research/2026-05-20-bio-api-credentials.md} but remains unexercised.
+
+\item \textbf{No head-to-head performance benchmark versus prior work.} Plan B (Claim A, \S\ref{sec:related}) differentiates the nerve-wml protocol qualitatively from prior discrete-code inter-module schemes (DVNC~\cite{liu2021dvnc}, NIR~\cite{pedersen2024nir}, AER~\cite{aer2025biohybrid}) in structural terms. No end-to-end accuracy or information-transmission benchmark against these three alternatives exists in this paper.
+
+\item \textbf{AKOrN minimal flavour.} The KuramotoMultiplexer used in ablations (Fig.~7) employs learned oscillation frequency $\omega$, coupling strength $K$, and linear readout over 8--32 Euler steps. This is not equivalent to the production AKOrN implementation of Miyato et al.~(ICLR 2025), which uses phase-aware readout and additional constraints. The synchrony spectral-entropy comparison (Renf 7) should be revisited against the full AKOrN architecture in future work.
+
+\item \textbf{Seed scope $n=50$.} Robustness holds within seeds 0--49 (Wilcoxon $p < 10^{-15}$ over the measured range), but generalisation to broader seed populations (e.g., 100, 1000+) is conjecture. Renf 11 (currently unmerged on \texttt{feat/deep-verifications}) provides partial evidence by comparing seed windows 0--49 vs.\ 50--99 vs.\ 1000--1049; until those results land on master, the 50-seed claim remains scope-limited.
+
+\item \textbf{Task scope and MI saturation.} All GTM (gamma-theta multiplex) ablations (Renf 7, Fig.~7) measure the same task configuration: alphabet=64, n\_symbols=7, 128 codes per batch. Mutual information saturates at 2.22 bits on this task. Whether the two competing arms (simple\_gating, akorn\_best) separate on harder routing problems (e.g., alphabet=128, n\_symbols=14, 256 codes per batch) is conjecture pending Renf 13 (\texttt{feat/deep-verifications}). All three arms reach the same accuracy and MI on the current task; the only discriminating axis is carrier spectral structure, not downstream task performance.
+
+\item \textbf{MLX cross-Apple-Silicon non-bit-exact.} The MLX library's \texttt{mx.random.normal} produces numerically distinct outputs across Apple Silicon generations: M1 family (`applegpu\_g13s`) outputs diverge from M3 family onwards (`g15+`, `g16+`). This is reported as ml-explore/mlx\#3568 (open). Numerical reproducibility of any result in this paper relying on MLX holds only within an architectural class (e.g., M1 to M1), not cross-generation.
+
+\item \textbf{Solo author, no internal review.} This paper has not undergone pre-submission internal review. Mitigations adopted during preparation: the fact-check audit (\texttt{scripts/factcheck\_audit.py --ci}) enforces that every numerical claim traces to JSON data from an executed research session, multi-seed measurement (n=50) is standardised across reinforcement runs (Renf 1--8), paired Wilcoxon tests with bootstrap confidence intervals are applied throughout, and five initial claims were revised during the gap-analysis sprint (documented in \texttt{CHANGELOG.md}). The audit currently reports 27 OK / 0 DIVERGENT on master (2026-05-20).
+
+\item \textbf{Spectral entropy 4-arm ordering is B-dependent.} As documented in \S\ref{sec:limitations} (Renf 10, \texttt{2026-05-20-renf10-batch-sensitivity.md}), the strict 4-arm ordering `null < akorn\_best < gtm < simple\_gating' reported in Renf 7 holds only at batch size B=256. At B ∈ \{64, 128, 512\} the AKOrN arm exhibits seed-variance $\sigma_{H_\mathrm{spec}} \approx 0.6$ and its rank flips with random initialisation. The robust, B-invariant claim is the two pairwise gaps: `gtm > null` (Δ ≥ 0.05 bits, p < 10$^{-15}$ at all B) and `gtm << simple\_gating` (gap ≥ 1.0 bits, p < 10$^{-15}$ at all B).
+
+\item \textbf{CKNNA is N-dependent metric.} The continuous-kernel nearest-neighbour alignment (Gröger et al.~2026) used to validate Claim B (Platonic Representation Hypothesis on discrete codes, \S\ref{sec:info-tx}) is a function of sample count N and pool size. The reported alignment 0.174 at k=10 (3 seeds) represents cross-substrate heterogeneous ANN vs.\ spiking LIF, not a universal constant. Reproducibility requires exact N, k, and seed specification.
+
+\end{enumerate}
+
+Several of these limitations admit straightforward empirical resolution: CL1/FinalSpark API access for item~2, broader seed populations for item~5, head-to-head DVNC/NIR/AER benchmarks for item~3. Others are scope decisions for this paper version (item~4, item~7); their resolution requires substantial additional engineering or interdisciplinary collaboration not undertaken here. All remaining limitations are tracked as future work in the specification (\texttt{docs/superpowers/specs/}).
+
 \textbf{$\gamma/\theta$ empirical stress.} The $\gamma/\theta$ multiplexing
 invariant (N-3: $\text{role}{=}\varepsilon \Leftrightarrow \text{phase}{=}\theta$,
 \S\ref{sec:method}) is formally specified and unit-tested
