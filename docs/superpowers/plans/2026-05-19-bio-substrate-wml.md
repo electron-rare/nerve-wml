@@ -1730,6 +1730,299 @@ No test for this task (documentation only).
 
 ---
 
+---
+
+## Deep-research integration 2026-05-19
+
+This section records how five references classified as **(b)** in the
+gating document `project_hypneum_deepresearch_2026_05_19_classification.md`
+feed into this plan. All five are fully encapsulated inside
+`BioFieldWML.step()` and leave the WML Protocol (N-1..N-5, W-1..W-4)
+and dream-of-kiki axioms (DR-0..DR-4) untouched.
+
+### Companion artifact — (i)+(ii) decomposition
+
+This plan is the **(i)** side of the user's "(i)+(ii)" framing: it
+delivers `BioFieldWML` as **one conformant substrate among N** under
+the existing WML Protocol, with DR-3 substrate-agnosticism preserved
+as a universal claim. The **(ii)** side — the interpretive biophysical
+sub-theory that stratifies the family of bio-grounded substrates — is
+documented separately in the companion spec
+`dream-of-kiki/docs/specs/2026-05-20-biophysical-stratification.md`.
+That spec routes the nine **(b′)**-classified references (Blum-Moyse
+coupled fields, Ursino theta-gamma neural mass, Młynarski-Hermundstad
+multimodal efficient+predictive, Heinrich MTRNN embodied grounding,
+and others) into five strata. Read both artifacts together: this plan
+is the conformant-substrate side, the stratification spec is the
+interpretive side; neither alone exhausts the deep-research integration.
+
+### OQ defaults (document for reviewer override)
+
+> **OQ-1 (DR-0 boundary):** `BioFieldWML.step()` performs ONE
+> synchronous Up-Down cycle per call. The cycle does **not** span
+> multiple `step()` calls. This preserves DR-0 (Accountability: every
+> δ output belongs to a bounded Dream Episode) by construction, because
+> the DE lifecycle is owned by dream-of-kiki — each `step()` call is
+> a complete, finite internal operation with no ambient background state
+> that outlives the call boundary.
+>
+> **OQ-2 (Tomé STDP scope):** STDP triplet + heterosynaptic +
+> inhibitory STDP land **exclusively** inside `BioFieldWML`. The
+> surrogate-gradient YAGNI of nerve-wml spec line 570 is **bounded**,
+> not revoked. The bound is: "the bio substrate may diverge from
+> surrogate-gradient; MLX/LIF/Transformer substrates keep surrogate-
+> gradient". `LifWML`, `MlpWML`, and `TransformerWML` are not
+> affected.
+
+*These defaults are conservative and correct as of 2026-05-20. The
+user can override either default at review by updating this block and
+the corresponding test descriptions below.*
+
+---
+
+### Ref B-1 — Tomé et al. 2024 (eLife)
+
+**"Dynamic and selective engrams emerge with memory consolidation."**
+
+**Mechanism.**
+Tomé 2024 documents three co-occurring plasticity rules in engram
+circuits during consolidation: (1) STDP triplet (pre/post/post²
+timing windows), (2) heterosynaptic depression (inactive synapses
+weaken when active neighbours potentiate), and (3) inhibitory STDP
+(interneuron synapses obey anti-Hebbian rule to sharpen selectivity).
+Together they produce sparse, decorrelated engrams with bounded
+weight growth.
+
+**Encapsulation inside `step()`.**
+All three rules execute inside `BioFieldWML._consolidate_weights()`
+called from `step()` after the Up-Down cycle. They update internal
+weight tensors (not exposed through the WML Protocol). `step()` reads
+the `ActivityFrame` returned by the `BioCultureClient`, computes
+spike-timing deltas, applies the three rules in order, and returns
+Neuroletters. No intermediate state outlives the call (OQ-1).
+
+**Axiom preservation.**
+- W-1 (`step()` never mutates another WML): only `self._weights`
+  is mutated; the Protocol boundary is respected.
+- W-3 (no access to `routing_weight` from inside `step()`): weight
+  update targets internal synaptic weights, not the Track-P router.
+- N-3 (`role == ERROR ↔ phase == THETA`): plasticity does not
+  affect Neuroletter role assignment — that mapping is computed
+  independently after weight update.
+- DR-0: weight update completes before `step()` returns; no ambient
+  background process (OQ-2 bounded scope).
+
+**Test hook.**
+`tests/unit/test_bio_wml_consolidation.py::test_weight_norm_bound_after_stdp`
+— after N consolidation cycles, assert `‖W‖_∞ ≤ W_MAX` (W-1
+internal invariant). Also assert that weight updates are zero for
+WMLs other than `self` (W-1 isolation check).
+
+---
+
+### Ref B-2 — Pignatelli et al. 2025 (Nat. Commun.)
+
+**IE (intrinsic excitability) plasticity of ACC engrams.**
+
+**Mechanism.**
+Pignatelli 2025 shows that engram neurons in anterior cingulate
+cortex undergo intrinsic excitability (IE) changes during
+consolidation: tagged neurons hyperpolarise their resting potential,
+raising the spike threshold during the post-consolidation window.
+This acts as a gating mechanism that makes recently consolidated
+engrams harder to overwrite.
+
+**Encapsulation inside `step()`.**
+`BioFieldWML` carries a per-neuron scalar `_ie_state: torch.Tensor`
+(shape `[n_neurons]`). During the *wake portion* of a `step()` call
+(stimulus → roundtrip → decode), neurons whose decoded activity
+exceeds a tagging threshold receive an episodic IE tag
+(`_ie_tag: bool mask`). During the *sleep portion* (Up-Down
+internal consolidation), tagged neurons receive an IE shift
+(`Δθ_IE`). `_ie_state` and `_ie_tag` are instance attributes;
+they are **not** exposed through any WML Protocol method signature.
+
+**Axiom preservation.**
+- W-1: `_ie_state` is private; only `step()` of this instance
+  mutates it.
+- W-3: IE modulation is local; `routing_weight` is untouched.
+- DR-3 (Substrate-agnosticism): IE is biophysical detail inside
+  `BioFieldWML`. Other substrates (`LifWML`, etc.) do not carry
+  `_ie_state`; the WML Protocol is unchanged.
+- DR-0: IE tag is computed and cleared within the same `step()`
+  call boundary; no persistent episodic state leaks between calls.
+
+**Test hook.**
+`tests/unit/test_bio_wml_ie.py::test_ie_tagged_neurons_hyperpolarise`
+— run two consecutive `step()` calls with a high-activity stimulus
+followed by a low-activity stimulus. Assert that neurons tagged in
+call 1 show a measurable IE shift (higher `_ie_state`) in call 2,
+and that untagged neurons are unaffected.
+
+---
+
+### Ref B-3 — Palacios et al. 2024 (arXiv:2409.05386)
+
+**SNN-PC survey — Fristonian extension (variational message
+passing, per-neuron spike-time prediction).**
+
+**Mechanism.**
+Palacios 2024 extends predictive coding (PC) to spiking networks:
+each neuron maintains a belief over *when* peers will spike and
+minimises variational free energy via local variational message
+passing (VMP). Prediction errors are Poisson-rate residuals
+(observed minus expected spike count). This maps naturally onto
+the nerve-wml role taxonomy: PREDICTION neurons emit γ-band
+neuroletters (N-3 canonical form), ERROR neurons emit θ-band
+neuroletters.
+
+**Encapsulation inside `step()`.**
+`BioFieldWML` maintains internal belief tensors `_mu: Tensor` (rate
+predictions) and `_sigma: Tensor` (rate uncertainty). During
+`step()`: (1) prior beliefs are computed from last-tick weights;
+(2) the `BioCultureClient` roundtrip provides observed spike counts;
+(3) VMP update computes posterior beliefs and prediction errors;
+(4) neurons above the prediction threshold emit Role.PREDICTION
+neuroletters (γ); neurons with high prediction error emit
+Role.ERROR neuroletters (θ). Both `_mu` and `_sigma` are reset or
+updated within `step()`.
+
+**Axiom preservation.**
+- N-3 (`role == ERROR ↔ phase == THETA`): the VMP rule drives
+  ERROR neurons precisely when `phase == THETA` is active on
+  the `MockNerve`; PREDICTION neurons are gated to `phase == GAMMA`.
+  This is the *same* canonical mapping as `LifWML`.
+- W-1: belief tensors are private instance state.
+- DR-3: predictive coding is a local computation; the WML Protocol
+  shape is unchanged (`step(nerve, t) -> None`).
+
+**Test hook.**
+`tests/unit/test_bio_wml_pc.py::test_neuroletter_role_partition`
+— inject a `MockNerve` with `phase == THETA` active and a stimulus
+that produces a large spike-count residual. Assert that all emitted
+neuroletters carry `role == ERROR`. Then switch to `phase == GAMMA`
+and a matching stimulus; assert `role == PREDICTION` dominates.
+
+---
+
+### Ref B-4 — Bellitto 2024 (WSCL)
+
+**Wake-Sleep Continual Learning — internal scheduler.**
+
+**Mechanism.**
+WSCL alternates wake phases (stimulus encoding, online learning)
+with sleep phases (offline consolidation, replay-based weight
+update) at the level of the learning agent. The key contribution
+is that sleep consolidation prevents catastrophic forgetting across
+a stream of tasks without a stored replay buffer, instead using
+internal generative replay during sleep.
+
+**Encapsulation inside `step()`.**
+`BioFieldWML` tracks a call counter `_call_count: int` and a
+phase ratio `_sleep_every: int` (default 4 — every 4th call is a
+sleep step). On a wake call, `step()` runs the full stimulus →
+roundtrip → decode → Neuroletter emit path. On a sleep call,
+`step()` runs the internal consolidation path (generative replay
+of stored prototype patterns) and emits no external neuroletters
+(silent, consistent with N-1: silence is legitimate). The
+wake/sleep toggle is purely internal — it does not change the
+`step()` signature or add a new channel. The DE machinery of
+dream-of-kiki is **outside** `BioFieldWML`; this scheduler governs
+only the internal compute path per call (OQ-1 default).
+
+**Axiom preservation.**
+- DR-0: every call to `step()` is a complete, bounded operation.
+  The sleep path does not emit δ outputs; no Dream Episode channel
+  is opened.
+- N-1 (silence is legitimate): sleep calls produce no neuroletters,
+  which is explicitly legal under N-1.
+- W-1: internal prototype buffer is instance-private.
+- DR-3: the WSCL scheduler is an internal heuristic; the WML
+  Protocol is unchanged.
+
+**Test hook.**
+`tests/integration/test_bio_wml_wscl.py::test_continual_learning_forgetting`
+— run `BioFieldWML` on task A for K steps, then task B for K
+steps, then re-evaluate on task A. Assert that task-A performance
+after task-B is within a defined forgetting threshold (≤ Δ_max
+relative to the WSCL ablation baseline from the paper). Compare
+against a control `BioFieldWML` with sleep disabled.
+
+---
+
+### Ref B-5 — Tucker, Luu & Friston 2025 (Cerebral Cortex)
+
+**"Adaptive consolidation of active inference: excitatory and
+inhibitory mechanisms for organizing feedforward and feedback
+memory systems in sleep."**
+
+**Mechanism.**
+Tucker et al. 2025 show that during sleep, E/I balance shifts:
+inhibitory gain suppresses feedforward (sensory-driven) pathways
+while excitatory gain amplifies feedback (prediction-driven)
+pathways. This selectivity reorganises memory traces so that
+abstract, prediction-consistent patterns are retained and
+sensory-noise is pruned. In the context of predictive coding (Ref
+B-3 above), this means the *sleep portion of `step()`* should
+privilege Role.PREDICTION neuroletters (feedback) over Role.ERROR
+(feedforward), producing a measurable shift in the role-mix of
+consolidation outputs.
+
+**Encapsulation inside `step()`.**
+When the internal WSCL scheduler (Ref B-4) marks a call as a sleep
+step, `BioFieldWML` applies an E/I gain tensor `_ei_gain: Tensor`
+that upweights feedback prediction pathways and downweights error
+pathways. `_ei_gain` is computed from the current `_ie_state`
+(Ref B-2) and the VMP belief tensors (Ref B-3), implementing the
+sleep-phase-specific gain described in Tucker 2025. On wake calls,
+`_ei_gain` reverts to a neutral 1.0 weight. The gain is entirely
+internal and does not change the Protocol interface.
+
+**Axiom preservation.**
+- N-3: E/I gain shift occurs within `step()` on sleep calls, where
+  no neuroletters are emitted externally (sleep is silent per
+  Ref B-4). On wake calls, N-3 mapping is unaffected.
+- W-3: `_ei_gain` does not touch `routing_weight`.
+- DR-0: sleep gain computation completes within the call boundary;
+  no state outlives `step()` beyond `_ei_gain` and `_ie_state`
+  (both instance attributes, not Protocol outputs).
+- DR-3: gain is a biophysical detail inside `BioFieldWML`; the
+  WML Protocol shape is unchanged.
+
+**Test hook.**
+`tests/unit/test_bio_wml_ei.py::test_feedforward_feedback_selectivity`
+— after injecting a sequence of wake and sleep `step()` calls,
+inspect the internal `_ei_gain` tensor. Assert that on sleep calls,
+the feedback component of `_ei_gain` is ≥ a threshold (e.g. 1.5)
+above the feedforward component. Additionally assert that wake
+calls restore a neutral `_ei_gain` (ratio ≈ 1.0 ± ε).
+
+---
+
+### Integration note — cohesion of B-3, B-4, B-5
+
+The three mechanistic refs interlock:
+
+- **B-3 (SNN-PC)** supplies the prediction/error machinery and the
+  internal belief tensors (`_mu`, `_sigma`).
+- **B-4 (WSCL)** supplies the wake/sleep scheduler that determines
+  *when* each call runs the external or internal path.
+- **B-5 (Tucker)** supplies the sleep-phase E/I gain that modulates
+  the B-3 machinery specifically on sleep calls.
+
+This layering is additive: each can be implemented independently
+(B-3 first, then B-4's scheduler wraps it, then B-5's gain is
+applied inside the sleep branch of B-4). The recommended execution
+order for the BioFieldWML implementation tasks is therefore:
+B-2 IE state (simple scalar, no dependencies) → B-3 SNN-PC
+beliefs (depends on `ActivityFrame`) → B-1 STDP rules (depends on
+spike-timing from B-3) → B-4 WSCL scheduler (wraps existing step
+logic) → B-5 E/I gain (plugs into B-4 sleep branch using B-3
+tensors and B-2 IE state). This sequence preserves the ability to
+run each incremental test suite before the next layer is added.
+
+---
+
 ## Self-Review
 
 Reviewed against the writing-plans skill checklist and the task brief:
