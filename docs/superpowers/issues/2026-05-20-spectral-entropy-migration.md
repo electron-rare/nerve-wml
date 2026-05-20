@@ -90,3 +90,20 @@ reading.
 - Raw data: `docs/superpowers/research/2026-05-20-synchrony-replacement.json`
 - Replacement implementation: `scripts/synchrony_alternatives.py` (master
   SHA `076f770`).
+
+## B-sensitivity caveat (added 2026-05-20 post-Renf 10)
+
+The 4-arm strict ordering "null < akorn_best < gtm < simple_gating"
+reported above (and in `2026-05-20-synchrony-replacement.md`) is
+**B-dependent**. Renf 10 (50 seeds × 4 B values × 4 arms; see
+`docs/superpowers/research/2026-05-20-renf10-batch-sensitivity.md` and
+the raw data in
+`docs/superpowers/research/2026-05-20-renf10-batch-sensitivity.json`)
+finds the canonical ordering only at `B = 256`; at `B ∈ {64, 128, 512}`
+the `akorn_best` arm falls **below** `null` due to its high
+seed-variance (σ ≈ 0.6 vs `gtm`'s 0.01). The robust 2-arm claims
+(`gtm > null`, `gtm < simple_gating`) hold at all four `B` values with
+`p < 1e-15`. The migration of `_synchrony_index` → `spectral_entropy`
+is unaffected; only the **framing of the 4-arm comparison** needs to be
+revised to "`gtm > null` and `gtm < simple_gating`, `akorn_best`
+intermediate but high-variance".
