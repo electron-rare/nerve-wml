@@ -63,6 +63,9 @@ class BioFieldWML(nn.Module):
         Number of ``step()`` calls per wake/sleep cycle.  A call is
         classified as a sleep call when ``_call_count % sleep_every == 0``
         (after increment).  Default: 4 (every 4th call is a sleep call).
+        Must be ``>= 1``; values ``< 1`` raise ``ValueError`` because the
+        wake/sleep cadence is otherwise undefined (modulo by zero or a
+        negative period collapses the phase classification in ``step()``).
     alphabet_size:
         Size of the local codebook vocabulary.  Must match the nerve's
         ``ALPHABET_SIZE``.  Default: 64.
@@ -83,6 +86,8 @@ class BioFieldWML(nn.Module):
         seed:          int | None = None,
     ) -> None:
         super().__init__()
+        if sleep_every < 1:
+            raise ValueError(f"sleep_every must be >= 1, got {sleep_every}")
         self.id            = id
         self.alphabet_size = alphabet_size
         self._sleep_every  = sleep_every

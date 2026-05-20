@@ -16,6 +16,8 @@ Invariants verified:
 """
 from __future__ import annotations
 
+import pytest
+
 from track_w.bio_field_wml import BioFieldWML
 from track_w.mock_nerve import MockNerve
 
@@ -124,3 +126,22 @@ def test_scheduler_alternates_correctly() -> None:
             f"Call {call_idx} should be a sleep call (emits 0 neuroletters, "
             f"N-1) but got {emitted[call_idx]}."
         )
+
+
+# ---------------------------------------------------------------------------
+# Test — sleep_every must be >= 1 (issue #21 Phase 1 hardening)
+# ---------------------------------------------------------------------------
+
+def test_sleep_every_must_be_positive() -> None:
+    """Constructor rejects sleep_every < 1.
+
+    The wake/sleep cadence is defined via _call_count % _sleep_every.
+    sleep_every == 0 would raise ZeroDivisionError inside step(), and
+    negative values collapse the phase classification.  Guard at __init__
+    so the error surfaces at construction (fail-fast), not on first step.
+    """
+    with pytest.raises(ValueError, match="sleep_every must be >= 1"):
+        BioFieldWML(id=0, sleep_every=0, seed=0)
+
+    with pytest.raises(ValueError, match="sleep_every must be >= 1"):
+        BioFieldWML(id=0, sleep_every=-1, seed=0)
