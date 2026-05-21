@@ -82,6 +82,207 @@ class InMemoryProvider:
         return self._projections[block_idx]
 
 
+@runtime_checkable
+class SpikingKikiBlockProvider(SpikingKikiWeightsProvider, Protocol):
+    """Extended provider that surfaces the full per-module weight layout.
+
+    Extends ``SpikingKikiWeightsProvider`` with optional access to the
+    Q/K/V attention projections, attention output, MoE router, per-expert
+    gate/up/down projections, and RMSNorm scales. This is the surface
+    needed for the spike-native attention + MoE routing follow-up (PR #5).
+
+    ``get_block_projection`` from the v1 Protocol is preserved so existing
+    ``InMemoryProvider``, ``MmapNpzProvider``, and all existing unit tests
+    remain green — this Protocol only adds optional methods. Providers
+    that do NOT implement ``SpikingKikiBlockProvider`` continue to work
+    with ``SpikingKikiWML.step()`` via the v1 collapsed-projection path.
+
+    NOTE: The spike-native attention formula and MoE routing strategy
+    (spike-route vs rate-route) are open research questions that require
+    auditing ``convert_spikingkiki_35b.py`` from the upstream repo
+    (55 KB, not included in nerve-wml). The forward implementation using
+    this Protocol is deferred pending that audit. Only the Protocol
+    surface and a synthetic test fixture are shipped in this PR.
+
+    Naming conventions (subject to audit confirmation):
+      W_qkv  — stacked Q/K/V projections, shape (3*n_heads*head_dim, hidden_dim)
+      W_out  — attention output projection, shape (hidden_dim, n_heads*head_dim)
+      W_router — MoE router logit weights, shape (n_experts, hidden_dim)
+      W_gate, W_up, W_down — expert gate/up/down projections per expert
+      gamma_in, gamma_post — RMSNorm scale vectors, shape (hidden_dim,) each
+    """
+
+    n_experts: int
+    n_heads: int
+
+    def get_qkv(self, block_idx: int) -> tuple[Tensor, Tensor, Tensor]:
+        """Return (W_Q, W_K, W_V) weight matrices for the block.
+
+        Shape of each: ``(n_heads * head_dim, hidden_dim)`` where
+        ``head_dim = hidden_dim // n_heads``.
+        """
+        ...
+
+    def get_attn_out(self, block_idx: int) -> Tensor:
+        """Return the attention output projection ``W_out``.
+
+        Shape: ``(hidden_dim, n_heads * head_dim)``.
+        """
+        ...
+
+    def get_router(self, block_idx: int) -> Tensor:
+        """Return the MoE router logit weight matrix.
+
+        Shape: ``(n_experts, hidden_dim)``.
+        """
+        ...
+
+    def get_expert(
+        self, block_idx: int, expert_idx: int
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        """Return (W_gate, W_up, W_down) for one MoE expert.
+
+        Shapes:
+          W_gate: ``(intermediate_dim, hidden_dim)``
+          W_up:   ``(intermediate_dim, hidden_dim)``
+          W_down: ``(hidden_dim, intermediate_dim)``
+        """
+        ...
+
+    def get_norms(self, block_idx: int) -> tuple[Tensor, Tensor]:
+        """Return (gamma_in, gamma_post) RMSNorm scale vectors.
+
+        Each has shape ``(hidden_dim,)``.
+        """
+        ...
+
+
+class InMemoryBlockProvider:
+    """Synthetic in-memory provider satisfying SpikingKikiBlockProvider.
+
+    Used by tests for the spike-attention + MoE Protocol surface (PR #5).
+    Weights are random tensors of the correct shapes. The v1
+    ``get_block_projection`` is computed as a mean of expert gate rows.
+
+    Parameters
+    ----------
+    hidden_dim:
+        Hidden dimension of the transformer block.
+    n_blocks:
+        Number of blocks in the provider.
+    n_experts:
+        Number of MoE experts per block.
+    n_heads:
+        Number of attention heads per block.
+    seed:
+        Optional random seed for reproducible fixtures.
+    """
+
+    def __init__(
+        self,
+        *,
+        hidden_dim: int = 16,
+        n_blocks: int = 1,
+        n_experts: int = 2,
+        n_heads: int = 2,
+        seed: int | None = None,
+    ) -> None:
+        if hidden_dim % n_heads != 0:
+            raise ValueError(
+                f"hidden_dim ({hidden_dim}) must be divisible by "
+                f"n_heads ({n_heads})"
+            )
+        self.hidden_dim = hidden_dim
+        self.n_blocks = n_blocks
+        self.n_experts = n_experts
+        self.n_heads = n_heads
+
+        gen = torch.Generator()
+        if seed is not None:
+            gen.manual_seed(seed)
+
+        head_dim = hidden_dim // n_heads
+        intermediate = hidden_dim * 2  # standard 2× MLP ratio
+
+        # Pre-generate all weights so get_* calls are deterministic.
+        self._qkv: list[tuple[Tensor, Tensor, Tensor]] = []
+        self._out: list[Tensor] = []
+        self._router: list[Tensor] = []
+        self._experts: list[list[tuple[Tensor, Tensor, Tensor]]] = []
+        self._norms: list[tuple[Tensor, Tensor]] = []
+
+        for _ in range(n_blocks):
+            self._qkv.append((
+                torch.randn(n_heads * head_dim, hidden_dim, generator=gen) * 0.1,
+                torch.randn(n_heads * head_dim, hidden_dim, generator=gen) * 0.1,
+                torch.randn(n_heads * head_dim, hidden_dim, generator=gen) * 0.1,
+            ))
+            self._out.append(
+                torch.randn(hidden_dim, n_heads * head_dim, generator=gen) * 0.1
+            )
+            self._router.append(
+                torch.randn(n_experts, hidden_dim, generator=gen) * 0.1
+            )
+            block_experts = []
+            for _ in range(n_experts):
+                block_experts.append((
+                    torch.randn(intermediate, hidden_dim, generator=gen) * 0.1,
+                    torch.randn(intermediate, hidden_dim, generator=gen) * 0.1,
+                    torch.randn(hidden_dim, intermediate, generator=gen) * 0.1,
+                ))
+            self._experts.append(block_experts)
+            self._norms.append((
+                torch.ones(hidden_dim),   # gamma_in (unit init)
+                torch.ones(hidden_dim),   # gamma_post (unit init)
+            ))
+
+    def _check_block(self, block_idx: int) -> None:
+        if not 0 <= block_idx < self.n_blocks:
+            raise IndexError(
+                f"block_idx {block_idx} outside [0, {self.n_blocks})"
+            )
+
+    def _check_expert(self, expert_idx: int) -> None:
+        if not 0 <= expert_idx < self.n_experts:
+            raise IndexError(
+                f"expert_idx {expert_idx} outside [0, {self.n_experts})"
+            )
+
+    def get_block_projection(self, block_idx: int) -> Tensor:
+        """v1 fallback: mean of expert gate rows as collapsed projection."""
+        self._check_block(block_idx)
+        gates = torch.stack(
+            [self._experts[block_idx][e][0] for e in range(self.n_experts)]
+        )  # [n_experts, intermediate, hidden]
+        # Collapse to (hidden, hidden): mean over experts, mean over intermediate.
+        return gates.mean(dim=0).mean(dim=0, keepdim=True).expand(
+            self.hidden_dim, self.hidden_dim
+        )
+
+    def get_qkv(self, block_idx: int) -> tuple[Tensor, Tensor, Tensor]:
+        self._check_block(block_idx)
+        return self._qkv[block_idx]
+
+    def get_attn_out(self, block_idx: int) -> Tensor:
+        self._check_block(block_idx)
+        return self._out[block_idx]
+
+    def get_router(self, block_idx: int) -> Tensor:
+        self._check_block(block_idx)
+        return self._router[block_idx]
+
+    def get_expert(
+        self, block_idx: int, expert_idx: int
+    ) -> tuple[Tensor, Tensor, Tensor]:
+        self._check_block(block_idx)
+        self._check_expert(expert_idx)
+        return self._experts[block_idx][expert_idx]
+
+    def get_norms(self, block_idx: int) -> tuple[Tensor, Tensor]:
+        self._check_block(block_idx)
+        return self._norms[block_idx]
+
+
 class SpikingKikiWML(nn.Module):
     """One transformer block of spikingkiki as a ``WML`` substrate.
 
