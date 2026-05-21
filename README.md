@@ -333,7 +333,7 @@ Sibling repositories:
 ```
 nerve_core/        Neuroletter, Nerve + WML Protocols, invariants (N-1..N-5, W-1..W-4)
 track_p/           Track-P — SimNerve, VQCodebook, Transducer, SparseRouter, AdaptiveCodebook
-track_w/           Track-W — MockNerve, MlpWML, LifWML, toy tasks, training loop, pool factory
+track_w/           Track-W — MockNerve + 6 WML substrates (MlpWML, LifWML, TransformerWML, BioWML, BioFieldWML, SpikingKikiWML), toy tasks, training loop, pool factory. See `docs/substrate-paradigms.md` for the paradigm map.
 bridge/            Merge, dream, LLM advisor — SimNerveAdapter, MergeTrainer, DreamBridge, NerveWmlAdvisor
 harness/           R1 reproducibility — run_registry
 interpret/         Gate Interp — code_semantics, clustering, HTML renderer
