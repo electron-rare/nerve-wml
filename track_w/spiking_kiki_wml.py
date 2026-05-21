@@ -23,7 +23,6 @@ LIF constants match the spikingkiki HF card: ``T=128``, ``threshold=0.0625``,
 """
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Protocol, runtime_checkable
 
 import torch
@@ -169,9 +168,6 @@ class SpikingKikiWML(nn.Module):
 
     def reset_state(self) -> None:
         self.v_mem.zero_()
-
-    def parameters(self, recurse: bool = True) -> Iterable[Tensor]:
-        return super().parameters(recurse=recurse)
 
     def _lif_integrate(self, drive: Tensor) -> Tensor:
         """Rate-coded LIF: integrate ``n_micro_ticks`` steps, return spike count.
