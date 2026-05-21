@@ -106,9 +106,9 @@ def main() -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(out, indent=2))
     print(f"wrote {args.out} in {out['wall_clock_s']:.1f}s")
-    print(f"sync at 50s: {out['synchrony_index']['mean']:.4f} ± {out['synchrony_index']['std']:.4f}")
-    print(f"  CI95: [{out['synchrony_index']['ci95_low']:.4f}, "
-          f"{out['synchrony_index']['ci95_high']:.4f}]")
+    s = out["synchrony_index"]
+    print(f"sync at 50s: {s['mean']:.4f} ± {s['std']:.4f}")
+    print(f"  CI95: [{s['ci95_low']:.4f}, {s['ci95_high']:.4f}]")
     return 0
 
 

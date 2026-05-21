@@ -5,10 +5,12 @@ of two predictions from Gröger, Wen & Brbić (2026,
 arXiv:2602.14486) — Proposition 4.2 ($\mathbb{E}[\mathrm{mKNN}(X,Y)]
 = k/(n-1)$) and the calibrated-effect-size argument — on a
 synthetic Gaussian substrate disjoint from their image-text PRH
-cells. This was originally drafted as a standalone arXiv note; it
-has been repurposed as paper-1 supplementary material after
-[@aristotelianprh2026] published the formal framework that subsumes
-the standalone claim.
+cells. This independent empirical validation (conducted on orthogonal
+data and method) confirms the null-calibration framework while
+providing supplementary context for the main paper's CKNNA discussion.
+Originally drafted as a standalone technical note; repurposed post hoc
+as paper-1 supplementary material after [@aristotelianprh2026]
+published the formal framework.
 
 The two empirical observations:
 

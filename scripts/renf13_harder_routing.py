@@ -97,7 +97,8 @@ def _train_akorn(codes, steps, alphabet_size):
 
 
 def _train_null(codes, steps, seed, alphabet_size):
-    rng = torch.Generator(); rng.manual_seed(seed + 9973)
+    rng = torch.Generator()
+    rng.manual_seed(seed + 9973)
     perm = torch.randperm(codes.shape[0], generator=rng)
     shuffled = codes[perm]
     cfg = GammaThetaConfig(
@@ -134,7 +135,7 @@ def _score(carrier, pred, codes_cpu):
 
 
 def _run_one(args):
-    seed, alphabet_size, K, steps = args
+    seed, alphabet_size, K, steps = args  # noqa: N806 (K matches Lisman-Idiart symbol)
     torch.manual_seed(seed)
     codes = torch.randint(0, alphabet_size, (128, K))
 

@@ -9,6 +9,54 @@ Citation : each release is archived on Zenodo (concept DOI [10.5281/zenodo.19656
 
 Research engine that validates a discrete-code communication layer between heterogeneous neural modules (World Model Languages, or WMLs). Modules exchange **neuroletters** over a sparse learned topology, multiplexed on gamma/theta rhythms, and converted between local codebooks by per-edge transducers. The paper draft is at [`papers/paper1/main.tex`](papers/paper1/main.tex); the full spec is at [`docs/superpowers/specs/2026-04-18-nerve-wml-design.md`](docs/superpowers/specs/2026-04-18-nerve-wml-design.md).
 
+## 2026-05-20 — Gap-analysis remediation sprint
+
+Reinforcement sprint that hardened the empirical claims via systematic
+statistical scrutiny. **97 commits, 13 PRs merged**, +458 fast-suite
+tests passing (from 385 baseline). Detailed entry in [`CHANGELOG.md`](CHANGELOG.md).
+
+**6 initial claims revised** under scrutiny:
+
+1. *learned strictly dominates relative_rep* → tie at `n_anchors=64`
+   (Δ=0.0001, p=0.627, n=50, bit-exact M5 ↔ macM1).
+2. *GTM doesn't collapse (synchrony 0.20 > 0.08)* → metric anti-monotone
+   (null=0.32 > GTM=0.20 > simple_gating=0.08); replaced with
+   `spectral_entropy` (Roy & Vetterli 2007 effective rank).
+3. *AKOrN minimal clusters with simple_gating* → sub-parametrised; at
+   `n_oscillators=64, n_steps=32, lr=0.05` AKOrN reaches synchrony 0.45.
+4. *CKNNA grows with N (signal)* → mechanical decay artefact (Gröger,
+   Wen & Brbić 2026 Prop 4.2). Signal/null d_z grows monotonically.
+5. *HSIC golden=8.5320 is stable scientific number* → standalone HSIC
+   non-informative (`|r|≤0.015` with 7 other alignment metrics on 1750
+   cells); always normalise to linear-CKA.
+6. *spectral_entropy 4-arm strict ordering* → B-dependent (Renf 10);
+   robust 2-arm: gtm > null, gtm < simple_gating at all B.
+
+**7 findings now publishable:**
+
+- AKOrN top-cell at n=50 = phase-aligner not coder: synchrony 0.53 ± 0.20
+  (cross-host: macM3 0.49 ± 0.19), accuracy bimodal 0.38 ± 0.31.
+- 3/4 substrates (gtm, simple_gating, null) **bit-exact cross-arch**
+  (M1 g13s ↔ M3 Pro g15s ↔ M5 g17g) under PyTorch deterministic path;
+  Kuramoto Euler integrator is the only cross-arch-divergent arm.
+- MLX `random.normal` cross-arch non-bit-exact (M1 vs M3+/M5), opened
+  upstream as [ml-explore/mlx#3568](https://github.com/ml-explore/mlx/issues/3568).
+- macM3 ~2-3× faster than macm1 on Python+torch multiproc CPU.
+- MLX 2× faster than `torch.MPS` at N=16384 for CKNNA Gram (`scripts/cknna_mlx_bench.py`).
+- Task scope (alphabet=64, K=7) saturates gtm and simple_gating equally;
+  spectral_entropy is the only discriminating axis.
+- Empirical confirmation of Gröger 2026 Prop 4.2 `E[mKNN]=k/(n-1)` on
+  synthetic Gaussian substrate (see `papers/paper1/supplementary/cknna-n-dependence-replication/`).
+
+**Methodology institutionalised:**
+
+The protocol *every numerical claim must trace to a JSON cell or
+executed log line in the same session* is now enforced by
+`scripts/factcheck_audit.py --ci` and runs as a GitHub Actions check
+on every PR touching `docs/superpowers/research/` or the audit script.
+**Current state: 32 OK / 0 DIVERGENT / 2 ORPHAN** (orphans = JSONs on
+unmerged branches).
+
 ## 2026-05-11 milestones — N8 → N14 portfolio sprints
 
 Tonight's six-sprint push closed the GammaThetaMultiplexer (GTM) empirical
