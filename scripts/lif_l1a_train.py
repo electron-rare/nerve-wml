@@ -19,16 +19,16 @@ import pathlib
 import sys
 
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 
 # Ensure project root is importable when invoked directly.
 _ROOT = pathlib.Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from track_w._surrogate import spike_with_surrogate
-from track_w.lif_wml import LifWML
-from track_w.tasks.hard_flow_proxy import HardFlowProxyTask
+from track_w._surrogate import spike_with_surrogate  # noqa: E402
+from track_w.lif_wml import LifWML  # noqa: E402
+from track_w.tasks.hard_flow_proxy import HardFlowProxyTask  # noqa: E402
 
 _RESEARCH = _ROOT / "docs" / "superpowers" / "research"
 
@@ -242,8 +242,11 @@ def main() -> None:
         }
         gate_path.write_text(json.dumps(gate_data, indent=2))
         print(f"\nGate evidence written to {gate_path}")
-        print(f"Gate {'PASSED' if primary['gate_passed'] else 'FAILED'}: "
-              f"acc={primary['acc_final']:.3f} >= 0.20 and loss descends = {primary['loss_descent']}")
+        gate_status = "PASSED" if primary["gate_passed"] else "FAILED"
+        print(
+            f"Gate {gate_status}: acc={primary['acc_final']:.3f} >= 0.20"
+            f" and loss descends = {primary['loss_descent']}"
+        )
 
     else:
         r = train_one(args.n, seed=args.seed, log_path=log_path, verbose=verbose)

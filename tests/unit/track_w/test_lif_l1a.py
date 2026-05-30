@@ -12,11 +12,9 @@ Gate L1a criteria (spec §5.2):
 """
 from __future__ import annotations
 
-import math
-
 import pytest
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 
 from track_w._surrogate import spike_with_surrogate
 from track_w.lif_wml import LifWML
@@ -226,7 +224,7 @@ class TestLIFL1aGate:
     @pytest.mark.slow
     def test_gate_acc_gte_20pct(self, tmp_path):
         """Full 2000-step run at n=1024 must reach acc >= 20 %."""
-        from scripts.lif_l1a_train import train_one, PRIMARY_N
+        from scripts.lif_l1a_train import PRIMARY_N, train_one
         r = train_one(PRIMARY_N, seed=0, log_path=None, verbose=False)
         assert r["acc_final"] >= 0.20, (
             f"Gate failed: acc_final={r['acc_final']:.3f} < 0.20. "
@@ -236,7 +234,7 @@ class TestLIFL1aGate:
     @pytest.mark.slow
     def test_gate_loss_descends(self, tmp_path):
         """Full 2000-step run: loss at step 2000 < loss at step 100."""
-        from scripts.lif_l1a_train import train_one, PRIMARY_N
+        from scripts.lif_l1a_train import PRIMARY_N, train_one
         r = train_one(PRIMARY_N, seed=0, log_path=None, verbose=False)
         assert r["loss_step2000"] < r["loss_step100"], (
             f"Loss did not descend: "
