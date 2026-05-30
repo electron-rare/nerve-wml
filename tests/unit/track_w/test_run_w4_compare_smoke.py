@@ -1,6 +1,7 @@
 """Smoke tests for run_w4_compare — checks dict keys and numeric ranges."""
-import torch
 import pytest
+import torch
+
 from scripts.track_w_pilot import run_w4_compare
 from track_w.tasks.hard_split import HardSplitTask
 
