@@ -255,6 +255,11 @@ class GammaThetaMultiplexer(nn.Module):
                 f"role shape {tuple(role.shape)} must match codes shape "
                 f"{tuple(codes.shape)}"
             )
+        if role is not None and not torch.all((role == 0) | (role == 1)):
+            raise ValueError(
+                f"role must contain only 0 (PREDICTION) or 1 (ERROR), "
+                f"got unique values {role.unique().tolist()}"
+            )
         k_active = codes.shape[-1]
         t = self._t_grid  # [n_samples]
         n_samples = t.numel()
@@ -365,6 +370,12 @@ class GammaThetaMultiplexer(nn.Module):
                 downstream loss back through the channel into the constellation
                 (bouba_sens CrossModalNerve.fuse θ-replay path).
         """
+        if carrier.ndim == 3:
+            raise ValueError(
+                f"demodulate expects a 1-channel carrier [B, T], got shape "
+                f"{tuple(carrier.shape)}. Pass carrier[:, 0] for the code "
+                f"channel; role-channel decoding is not yet supported."
+            )
         batch, n_samples = carrier.shape
         t = self._t_grid
         k_cap = self.cfg.symbols_per_theta

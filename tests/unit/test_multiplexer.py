@@ -266,6 +266,37 @@ def test_role_prediction_on_gamma_error_on_theta():
     assert err_spec[theta_bin] > pred_spec[theta_bin]
 
 
+def test_role_channel_zero_unchanged_under_noise():
+    """Channel 0 of the role-carrier must be byte-identical to forward(role=None)
+    even when noise is applied, provided the same RNG state is used for both
+    calls. The out-of-band design (Q5) guarantees independence between channels.
+    """
+    mux = GammaThetaMultiplexer(seed=0)
+    cfg = mux.cfg
+    codes = torch.randint(0, cfg.alphabet_size, (2, cfg.symbols_per_theta))
+    role = torch.randint(0, 2, codes.shape)
+    noise = AWGN(sigma=0.05)
+
+    torch.manual_seed(42)
+    base = mux.forward(codes, noise=noise)
+
+    torch.manual_seed(42)
+    out = mux.forward(codes, noise=noise, role=role)
+
+    assert torch.equal(out[:, 0, :], base)
+
+
+def test_forward_raises_on_invalid_role_values():
+    """forward must raise ValueError when role contains values outside {0, 1}."""
+    mux = GammaThetaMultiplexer(seed=0)
+    cfg = mux.cfg
+    codes = torch.randint(0, cfg.alphabet_size, (2, cfg.symbols_per_theta))
+    bad_role = torch.zeros(codes.shape, dtype=torch.long)
+    bad_role[0, 0] = 2  # invalid value
+    with pytest.raises(ValueError, match="role must contain only 0"):
+        mux.forward(codes, role=bad_role)
+
+
 def test_carrier_spectrum_dominated_by_gamma_band():
     """Constant-code carrier reduces to pure γ × θ-env → peak at γ bin.
 
