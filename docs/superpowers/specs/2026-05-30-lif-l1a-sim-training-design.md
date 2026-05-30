@@ -61,18 +61,41 @@ L1b (NIR/INT8 export) and L1c (baby-brain coupling) are out of scope.
 The current toy defaults are `n_neurons=16`, `alphabet_size=64`,
 `input_dim=n_neurons`. L1a uses:
 
-| Hyperparameter | Toy (current) | L1a scaled |
+| Hyperparameter | Toy (current) | L1a target |
 |---|---|---|
-| `n_neurons` | 16 | 256 |
+| `n_neurons` | 16 | **1024** |
 | `alphabet_size` | 64 | 64 (unchanged — codebook is not the bottleneck) |
-| `input_dim` | 16 (= task dim) | 32 (see §3.2) |
+| `input_dim` | 16 (= task dim) | **64** (see §3.2) |
 | `threshold_eps` | 0.30 | 0.30 (unchanged) |
 | `tau_mem` | 20 ms | 20 ms (unchanged) |
 | `v_thr` | 1.0 | 1.0 (unchanged) |
 
-Rationale: `n_neurons=256` keeps memory under 100 MB on macM1
-(`256×32` weight matrices). Larger values (512+) risk memory pressure on the
-16 GB machine without demonstrating new science.
+Rationale: `n_neurons=1024` is the L1a scaling target. A sweep over
+`{128, 256, 512, 1024}` is run to measure the capacity curve (acc vs n_neurons)
+and confirm that the gain is monotone. `input_dim=64` decouples task-input
+dimension from neuron count more aggressively than the prior 32-dim value
+to give the encoder more expressivity at large n_neurons.
+
+### 3.1b Scaling sweep
+
+An explicit capacity experiment runs training for each of:
+
+```
+n_neurons ∈ {128, 256, 512, 1024}
+```
+
+For each size: same hyperparameters (T=8, Adam lr=3e-3, N_STEPS=2000, batch=64,
+seed=0), same HardFlowProxyTask. The sweep measures:
+
+- `acc_trained` — final accuracy after N_STEPS
+- `acc_untrained` — accuracy before any training (random weights)
+- `loss_start` — loss at step 1 (after first Adam step)
+- `loss_end` — loss at step N_STEPS
+
+Results are written to
+`docs/superpowers/research/2026-05-30-lif-l1a-scaling.json` as an array keyed
+by n_neurons. The curve answers: "is there a monotone capacity benefit to
+scaling n_neurons on HardFlowProxyTask?"
 
 `emit_head_pi` (`track_w/lif_wml.py:73`) maps `n_neurons → alphabet_size`.
 For L1a the task has 12 classes; we read `logits = emit_head_pi(spikes)[:, :12]`
@@ -94,14 +117,16 @@ Chosen because:
 
 Input pipeline:
 ```
-x ∈ ℝ^{16}  →  nn.Linear(16, 32)  →  LifWML.input_proj(·)  →  spikes ∈ {0,1}^{256}
-                input_encoder            nn.Linear(32, 256)
+x ∈ ℝ^{16}  →  nn.Linear(16, 64)  →  LifWML.input_proj(·)  →  spikes ∈ {0,1}^{N}
+                input_encoder            nn.Linear(64, N)
 ```
+where N = n_neurons (128, 256, 512, or 1024 in the sweep).
 
-`input_encoder` is a separate `nn.Linear(16, 32)` trained end-to-end alongside
+`input_encoder` is a separate `nn.Linear(16, 64)` trained end-to-end alongside
 LifWML parameters (same pattern as `run_w2_hard`, `track_w_pilot.py:253`).
-The intermediate 32-dim projection decouples task-input dimension from neuron
-count and is the only new component.
+The intermediate 64-dim projection decouples task-input dimension from neuron
+count and is the only new component. `input_dim=64` is passed to `LifWML`
+so `input_proj` is `nn.Linear(64, N)`.
 
 ### 3.3 Spike generation (T-tick unrolling)
 
@@ -130,14 +155,15 @@ No inter-sample recurrence — simplest possible semantics for L1a.
 
 ```python
 # Pseudocode — final script: scripts/lif_l1a_train.py
+# N = n_neurons (1024 for the primary run; {128,256,512,1024} for the sweep)
 optimizer = Adam(list(lif.parameters()) + list(input_encoder.parameters()), lr=3e-3)
 
 for step in range(N_STEPS):          # N_STEPS = 2000 (L1a default)
     x, y = task.sample(batch=64)
     lif.reset_state()
 
-    v_mem = torch.zeros(256)
-    spikes_acc = torch.zeros(64, 256)   # batch × n_neurons
+    v_mem = torch.zeros(batch, N)
+    spikes_acc = torch.zeros(batch, N)   # batch × n_neurons
     for t in range(T):                  # T = 8
         i_in = lif.input_proj(input_encoder(x))
         v_mem = v_mem + dt / tau * (-v_mem + i_in)
@@ -174,19 +200,19 @@ HardFlowProxyTask.sample(batch=64)
         │
         │ x ∈ ℝ^{64×16}, y ∈ ℤ^{64}
         ▼
-nn.Linear(16, 32)  [input_encoder]
+nn.Linear(16, 64)  [input_encoder]
         │
-        │ ℝ^{64×32}
+        │ ℝ^{64×64}
         ▼
-LifWML.input_proj  [nn.Linear(32, 256)]      ← lif_wml.py:66
+LifWML.input_proj  [nn.Linear(64, N)]      ← lif_wml.py:66  (N = n_neurons)
         │
-        │ ℝ^{64×256}
+        │ ℝ^{64×N}
         ▼
-T=8 × spike_with_surrogate(v_thr=1.0)       ← _surrogate.py:32
+T=8 × spike_with_surrogate(v_thr=1.0)     ← _surrogate.py:32
         │
-        │ spikes_acc ∈ ℝ^{64×256}  (sum of binary spike tensors, grad flows)
+        │ spikes_acc ∈ ℝ^{64×N}  (sum of binary spike tensors, grad flows)
         ▼
-LifWML.emit_head_pi  [nn.Linear(256, 64)]    ← lif_wml.py:73
+LifWML.emit_head_pi  [nn.Linear(N, 64)]   ← lif_wml.py:73
         │
         │ logits[:, :12]  ∈ ℝ^{64×12}
         ▼
@@ -233,7 +259,8 @@ honestly and open an issue — the gate fails, the science is not hidden.
 {
   "task": "HardFlowProxyTask",
   "n_classes": 12,
-  "n_neurons": 256,
+  "n_neurons": 1024,
+  "input_dim": 64,
   "T_ticks": 8,
   "n_steps": 2000,
   "seed": 0,
@@ -244,6 +271,9 @@ honestly and open an issue — the gate fails, the science is not hidden.
   "gate_passed": <bool>
 }
 ```
+
+The scaling sweep emits `docs/superpowers/research/2026-05-30-lif-l1a-scaling.json`
+with per-n_neurons entries (see §3.1b).
 
 Multi-seed robustness (n=3, seeds 0/1/2) is **recommended** but not required
 for gate passage. If only seed=0 is run, the claim must be qualified as
@@ -269,7 +299,9 @@ single-seed in any paper text.
 | Decision | Choice | Rationale |
 |---|---|---|
 | Task | `HardFlowProxyTask(dim=16, n_classes=12)` | Non-trivial (XOR + 12 classes), already in codebase, no download required |
-| n_neurons | 256 | 16× toy size; fits macM1 16 GB; proven tractable in pool pilots |
+| n_neurons target | 1024 | 64× toy size; fits macM1 16 GB; sweep {128,256,512,1024} measures capacity curve |
+| input_dim | 64 | Decouples task input from neuron count; more expressivity than 32-dim |
+| Scaling sweep | {128, 256, 512, 1024} | Acc vs n_neurons capacity curve; answers whether scaling helps |
 | T ticks | 8 | Enough for integrate-and-fire at scale; macM1 CPU-safe |
 | Optimizer | Adam, lr=3e-3 | Conservative vs existing lr=1e-2; SNN more sensitive |
 | N_STEPS | 2000 | Sufficient coverage of synthetic task; matches pool-scale pilots |
