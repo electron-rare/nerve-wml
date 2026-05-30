@@ -6,7 +6,11 @@ Research engine for substrate-agnostic inter-WML nerve protocol. Python 3.12 + u
 
 - `nerve_core/` — shared contracts (Neuroletter, Nerve/WML Protocol, invariants)
 - `track_p/` — protocol simulator (SimNerve, VQ, transducer, router)
-- `track_w/` — WML lab (MockNerve, MlpWML, LifWML) — future plan
+- `track_w/` — WML lab — **6 substrates implemented**: `MlpWML`, `LifWML`,
+  `TransformerWML`, `BioWML`, `BioFieldWML`, `SpikingKikiWML`; plus
+  `track_w/continual/` sub-package (`ewc.py` — diagonal Fisher EWC,
+  `rehearsal.py` — fixed-replay `RehearsalBuffer`) for gate-W continual
+  hardening (PR #46)
 - `bridge/` — merge trainer — future plan
 - `tests/` — unit (L1), info-theoretic (L2), integration (L3), golden (L4)
 
