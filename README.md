@@ -236,6 +236,32 @@ The sister project `bouba_sens` (2026-04-21, `github.com/hypneum-lab/bouba_sens`
 
 Paper drafts: `paper-v0.2-draft` … `paper-v0.9-draft` track the iterations that produced the v1.2 claims above. Release tags `v1.0.0`, `v1.1.0` … `v1.1.4`, `v1.2.0`, `v1.2.3`, `v1.3.0`, `v1.4.0`, `v1.5.0`, `v1.5.1` archive the code snapshots; see [`CHANGELOG.md`](CHANGELOG.md) for per-version findings.
 
+## Track-W hardening — EWC vs rehearsal (2026-05-30, PR #46)
+
+Continual-learning hardening of gate W on a deliberately difficult task
+(`HardSplitTask` — shared 12-class head, Tasks 0 and 1 on non-overlapping
+label splits). Three methods compared under matched settings:
+
+| Method | Forgetting ↓ (lower = better) | Notes |
+|---|---|---|
+| **Rehearsal** (20 % replay) | **0.034** | Best by a wide margin |
+| **EWC** (λ=1000) | 0.532 | Meaningful regularisation vs none |
+| **None** (fine-tune only) | 0.767 | Catastrophic forgetting baseline |
+
+Honest framing: this is a diagnostic comparison on a single hard task, not a
+new gate. EWC at λ=1000 provides significant regularisation (0.532 vs 0.767),
+but rehearsal (0.034) dominates when a replay buffer is available. Raw numbers
+trace to `docs/superpowers/research/2026-05-30-w4-ewc-comparison.json`.
+
+Implementation in `track_w/continual/`:
+- `ewc.py` — `estimate_fisher(wml, data_loader)` (diagonal Fisher from
+  squared log-likelihood gradients) + `penalty(wml, fisher, theta_star, lam)`.
+  Respects W-1 (no mutation of another WML's parameters) and W-2 (codebook
+  regularised alongside MLP weights).
+- `rehearsal.py` — `RehearsalBuffer` dataclass (fixed-replay, batch-mixing
+  for Task 1 training, same scaffold reused by `run_w4_compare`).
+- `tasks/hard_split.py` — `HardSplitTask` shared-head 12-class split task.
+
 ## Post-v1.2.3 API additions (2026-04-21)
 
 Three issues filed by downstream consumers (`bouba_sens`, `dream-of-kiki`)
