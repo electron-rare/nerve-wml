@@ -290,6 +290,47 @@ def run_audit() -> None:
                  f"mi={a['mi_bits']['mean']:.3f}  se={a['spectral_entropy']['mean']:.3f}")
 
     _say()
+    # --- EWC / HardSplitTask claims (2026-05-30-track-w-hardening-ewc) ---
+    ewc_d = _maybe(RESEARCH / "2026-05-30-w4-ewc-comparison.json")
+    if ewc_d is not None:
+        _say("=" * 80)
+        _say("CLAIM EWC-1: HardSplitTask baseline forgetting >= 0.50 (task is hard)")
+        actual_baseline = ewc_d.get("multi_seed_none_mean", 0.0)
+        threshold = 0.50
+        check(
+            "hard_split_baseline_forgetting_threshold",
+            True,
+            bool(actual_baseline >= threshold),
+        )
+
+        _say("=" * 80)
+        _say("CLAIM EWC-2: EWC forgetting < none forgetting (best lambda, multi-seed mean)")
+        ewc_vs_none = ewc_d.get("ewc_vs_none_best_lam_mean", {})
+        check(
+            "ewc_beats_none_best_lam",
+            True,
+            bool(ewc_vs_none.get("ewc_beats_none", False)),
+        )
+
+        _say("=" * 80)
+        _say("CLAIM EWC-3: multi-seed mean forgetting recorded (rehearsal)")
+        orphan(
+            "multi_seed_rehearsal_mean",
+            f"recorded={ewc_d.get('multi_seed_rehearsal_mean', 'MISSING')} "
+            "(no fixed baseline — value logged for paper table)"
+        )
+        _say("CLAIM EWC-4: multi-seed mean forgetting recorded (ewc best lam)")
+        ewc_mean_val = ewc_d.get(
+            "ewc_vs_none_best_lam_mean", {}
+        ).get("ewc_mean_forgetting", "MISSING")
+        orphan(
+            "multi_seed_ewc_mean",
+            f"recorded={ewc_mean_val} (no fixed baseline — value logged for paper table)"
+        )
+    else:
+        orphan("ewc_hardening", "2026-05-30-w4-ewc-comparison.json not found — run T6 tests first")
+
+    _say()
     _say("=" * 80)
     _say("CLAIM 13: 4-host MLX divergence (blindage sha256, M1/M3-Pro/M3-Ultra/M5)")
     _say("=" * 80)
