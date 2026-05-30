@@ -43,7 +43,9 @@ def estimate_fisher(
     dict mapping parameter name → non-negative diagonal Fisher tensor
         (same shape as the parameter).
     """
-    n_classes = data_loader[0][1].max().item() + 1  # inferred from data
+    # Assumes the first batch contains the highest class id (true for the dense
+    # 12-class HardSplitTask batches; pass n_classes explicitly if this assumption breaks).
+    n_classes = data_loader[0][1].max().item() + 1
     fisher: dict[str, Tensor] = {
         name: torch.zeros_like(p) for name, p in wml.named_parameters()
     }
@@ -53,6 +55,9 @@ def estimate_fisher(
         logits = wml.emit_head_pi(wml.core(x))[:, : int(n_classes)]
         log_probs = F.log_softmax(logits, dim=-1)
         # Use true label log-likelihood for a tighter diagonal estimate.
+        # NOTE: nll_loss(reduction='mean') gives a batch-averaged gradient, so this is
+        # the squared mean, not the mean of squares — the standard empirical-Fisher (EWC)
+        # convention. lam absorbs the scale factor.
         nll = F.nll_loss(log_probs, y)
         wml.zero_grad()
         nll.backward()
@@ -61,6 +66,7 @@ def estimate_fisher(
                 fisher[name] += p.grad.detach() ** 2
     for name in fisher:
         fisher[name] /= n_batches
+    wml.zero_grad()  # clean residual grads from the last backward pass
     wml.train()
     return fisher
 
