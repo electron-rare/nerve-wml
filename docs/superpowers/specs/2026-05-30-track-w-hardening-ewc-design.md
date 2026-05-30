@@ -57,10 +57,10 @@ mechanisms in one place; pilots stay in `scripts/track_w_pilot.py`.
   API consumed by the pilots).
 
 ### 2. `track_w/continual/ewc.py` — `EWC`
-- `estimate_fisher(wml, data_loader) -> dict[str, mx.array]`: diagonal Fisher
+- `estimate_fisher(wml, data_loader) -> dict[str, Tensor]`: diagonal Fisher
   information over `wml.parameters()` after Task 0, from squared gradients of
   the log-likelihood.
-- `penalty(wml, fisher, theta_star, lam) -> mx.array`: `Σ_i F_i (θ_i − θ*_i)²`,
+- `penalty(wml, fisher, theta_star, lam) -> Tensor`: `Σ_i F_i (θ_i − θ*_i)²`,
   added to the Task 1 loss.
 - Respects **W-2** (penalty ranges over `parameters()`, which includes the
   codebook) and **W-1** (no mutation of another WML).

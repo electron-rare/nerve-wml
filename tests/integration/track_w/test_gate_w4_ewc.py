@@ -1,7 +1,9 @@
 """Integration gate: EWC on HardSplitTask — measured forgetting reported honestly."""
 import statistics
-import torch
+
 import pytest
+import torch
+
 from scripts.track_w_pilot import run_w4_compare, run_w4_ewc_sweep
 from track_w.tasks.hard_split import HardSplitTask
 

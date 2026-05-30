@@ -1,10 +1,10 @@
 """Multi-seed comparison: none / rehearsal / ewc on HardSplitTask (slow)."""
 import statistics
-import torch
+
 import pytest
+
 from scripts.track_w_pilot import run_w4_compare
 from track_w.tasks.hard_split import HardSplitTask
-
 
 SEEDS = list(range(5))
 LAM   = 1.0  # EWC strength — swept and documented in research JSON

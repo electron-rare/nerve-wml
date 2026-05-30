@@ -1345,8 +1345,10 @@ def run_w4_compare(
         method           : str    the method argument
         lam              : float  lam value (0.0 for none/rehearsal)
     """
-    import torch.nn.functional as F  # noqa: PLC0415
-    from track_w.continual.ewc import estimate_fisher, penalty as ewc_penalty
+    import torch.nn.functional as F  # noqa: PLC0415, N812
+
+    from track_w.continual.ewc import estimate_fisher
+    from track_w.continual.ewc import penalty as ewc_penalty
     from track_w.continual.rehearsal import RehearsalBuffer
 
     if method not in ("none", "rehearsal", "ewc"):
@@ -1376,7 +1378,9 @@ def run_w4_compare(
     # --- Task 0 training (same for all methods) ---
     for _ in range(steps):
         loss = _task_loss(task0, 64)
-        opt.zero_grad(); loss.backward(); opt.step()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
 
     acc0_before = _eval(task0)
 
@@ -1405,7 +1409,9 @@ def run_w4_compare(
             loss = _task_loss(task1, 64)
             if fisher:
                 loss = loss + ewc_penalty(wml, fisher, theta_star, lam=lam)
-        opt.zero_grad(); loss.backward(); opt.step()
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
 
     acc0_after = _eval(task0)
     acc1       = _eval(task1)
@@ -1446,6 +1452,7 @@ def run_w4_ewc_sweep(
         sweep_table    : list[dict]         one row per λ (for JSON serialisation)
     """
     import statistics  # noqa: PLC0415
+
     from track_w.tasks.hard_split import HardSplitTask  # noqa: PLC0415
 
     results_by_lam: dict[float, list[float]] = {}
@@ -1463,7 +1470,7 @@ def run_w4_ewc_sweep(
         std_f  = statistics.stdev(forgettings) if len(forgettings) > 1 else 0.0
         sweep_table.append({"lam": lam, "mean_forgetting": mean_f, "std_forgetting": std_f})
 
-    best_lam = min(results_by_lam, key=lambda l: statistics.mean(results_by_lam[l]))
+    best_lam = min(results_by_lam, key=lambda lam_val: statistics.mean(results_by_lam[lam_val]))
     best_mean = statistics.mean(results_by_lam[best_lam])
 
     return {

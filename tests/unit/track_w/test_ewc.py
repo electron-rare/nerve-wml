@@ -1,8 +1,9 @@
 """Unit tests for EWC (diagonal Fisher + quadratic penalty)."""
 import torch
+
+from track_w.continual.ewc import estimate_fisher, penalty
 from track_w.mlp_wml import MlpWML
 from track_w.tasks.hard_split import HardSplitTask
-from track_w.continual.ewc import estimate_fisher, penalty
 
 
 def _make_loader(task_idx: int, n_batches: int = 4, batch: int = 32):
@@ -63,7 +64,9 @@ def test_penalty_positive_after_update():
     x, y = loader[0]
     logits = wml.emit_head_pi(wml.core(x))[:, :12]
     loss = torch.nn.functional.cross_entropy(logits, y)
-    opt.zero_grad(); loss.backward(); opt.step()
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
 
     pen = penalty(wml, fisher, theta_star, lam=1.0)
     assert pen.item() > 0.0
@@ -82,7 +85,9 @@ def test_penalty_scales_with_lam():
     x, y = loader[0]
     logits = wml.emit_head_pi(wml.core(x))[:, :12]
     loss = torch.nn.functional.cross_entropy(logits, y)
-    opt.zero_grad(); loss.backward(); opt.step()
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
 
     p1 = penalty(wml, fisher, theta_star, lam=1.0).item()
     p2 = penalty(wml, fisher, theta_star, lam=2.0).item()

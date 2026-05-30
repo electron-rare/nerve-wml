@@ -19,7 +19,7 @@ W-2: penalty ranges over wml.parameters() which includes the codebook,
 from __future__ import annotations
 
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F  # noqa: N812
 from torch import Tensor
 
 from track_w.mlp_wml import MlpWML

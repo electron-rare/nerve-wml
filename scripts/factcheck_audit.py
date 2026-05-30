@@ -320,10 +320,12 @@ def run_audit() -> None:
             "(no fixed baseline — value logged for paper table)"
         )
         _say("CLAIM EWC-4: multi-seed mean forgetting recorded (ewc best lam)")
+        ewc_mean_val = ewc_d.get(
+            "ewc_vs_none_best_lam_mean", {}
+        ).get("ewc_mean_forgetting", "MISSING")
         orphan(
             "multi_seed_ewc_mean",
-            f"recorded={ewc_d.get('ewc_vs_none_best_lam_mean', {}).get('ewc_mean_forgetting', 'MISSING')} "
-            "(no fixed baseline — value logged for paper table)"
+            f"recorded={ewc_mean_val} (no fixed baseline — value logged for paper table)"
         )
     else:
         orphan("ewc_hardening", "2026-05-30-w4-ewc-comparison.json not found — run T6 tests first")
