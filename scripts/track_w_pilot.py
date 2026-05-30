@@ -1421,6 +1421,66 @@ def run_w4_compare(
     }
 
 
+def run_w4_ewc_sweep(
+    lams: tuple = (1.0, 10.0, 100.0, 1000.0),
+    seeds: range = range(5),
+    steps: int = 400,
+) -> dict:
+    """Sweep EWC λ values and return mean forgetting per λ plus best λ.
+
+    Parameters
+    ----------
+    lams : tuple of float
+        Grid of regularisation strengths to sweep.
+    seeds : range or sequence of int
+        Seeds for multi-seed averaging (default n=5).
+    steps : int
+        Training steps per task per run.
+
+    Returns
+    -------
+    dict with keys:
+        results_by_lam : dict[float, dict]  per-λ stats (mean/std forgetting)
+        best_lam       : float              λ with lowest mean forgetting
+        best_mean      : float              mean forgetting at best_lam
+        sweep_table    : list[dict]         one row per λ (for JSON serialisation)
+    """
+    import statistics  # noqa: PLC0415
+    from track_w.tasks.hard_split import HardSplitTask  # noqa: PLC0415
+
+    results_by_lam: dict[float, list[float]] = {}
+    for lam in lams:
+        forgettings: list[float] = []
+        for seed in seeds:
+            task = HardSplitTask(seed=seed)
+            r = run_w4_compare(method="ewc", task=task, steps=steps, seed=seed, lam=lam)
+            forgettings.append(r["forgetting"])
+        results_by_lam[lam] = forgettings
+
+    sweep_table = []
+    for lam, forgettings in results_by_lam.items():
+        mean_f = statistics.mean(forgettings)
+        std_f  = statistics.stdev(forgettings) if len(forgettings) > 1 else 0.0
+        sweep_table.append({"lam": lam, "mean_forgetting": mean_f, "std_forgetting": std_f})
+
+    best_lam = min(results_by_lam, key=lambda l: statistics.mean(results_by_lam[l]))
+    best_mean = statistics.mean(results_by_lam[best_lam])
+
+    return {
+        "results_by_lam": {
+            lam: {
+                "mean_forgetting": statistics.mean(fs),
+                "std_forgetting":  statistics.stdev(fs) if len(fs) > 1 else 0.0,
+                "per_seed":        fs,
+            }
+            for lam, fs in results_by_lam.items()
+        },
+        "best_lam":   best_lam,
+        "best_mean":  best_mean,
+        "sweep_table": sweep_table,
+    }
+
+
 if __name__ == "__main__":
     import sys
 
