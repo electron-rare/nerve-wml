@@ -1309,6 +1309,118 @@ def run_gate_scale() -> dict:
     }
 
 
+def run_w4_compare(
+    method: str,
+    task,
+    steps: int = 400,
+    seed: int = 0,
+    rehearsal_frac: float = 0.3,
+    lam: float = 1.0,
+) -> dict:
+    """Unified W4 comparison scaffold for none / rehearsal / ewc.
+
+    Parameters
+    ----------
+    method : str
+        One of "none", "rehearsal", "ewc".
+    task : HardSplitTask
+        Provides task.subtasks[0] (Task 0) and task.subtasks[1] (Task 1).
+        Must expose subtask.sample(batch) -> (x, y) and subtask.n_classes.
+    steps : int
+        Training steps per task.
+    seed : int
+        Manual seed for reproducibility.
+    rehearsal_frac : float
+        Fraction of Task-1 mini-batch filled with Task-0 samples (rehearsal only).
+    lam : float
+        EWC regularisation strength (ewc only).
+
+    Returns
+    -------
+    dict with keys:
+        forgetting       : float  (acc0_before - acc0_after) / acc0_before
+        acc0_before      : float  Task-0 accuracy before Task-1 training
+        acc0_after       : float  Task-0 accuracy after Task-1 training
+        acc1             : float  Task-1 accuracy after Task-1 training
+        method           : str    the method argument
+        lam              : float  lam value (0.0 for none/rehearsal)
+    """
+    import torch.nn.functional as F  # noqa: PLC0415
+    from track_w.continual.ewc import estimate_fisher, penalty as ewc_penalty
+    from track_w.continual.rehearsal import RehearsalBuffer
+
+    if method not in ("none", "rehearsal", "ewc"):
+        raise ValueError(f"method must be 'none', 'rehearsal', or 'ewc'; got {method!r}")
+
+    torch.manual_seed(seed)
+    nerve = MockNerve(n_wmls=2, k=1, seed=seed)
+    nerve.set_phase_active(gamma=True, theta=False)
+    wml   = MlpWML(id=0, d_hidden=16, seed=seed)
+    opt   = torch.optim.Adam(wml.parameters(), lr=1e-2)
+
+    task0 = task.subtasks[0]
+    task1 = task.subtasks[1]
+    n_classes = task0.n_classes  # 12
+
+    def _eval(t) -> float:
+        x, y = t.sample(batch=256)
+        with torch.no_grad():
+            pred = wml.emit_head_pi(wml.core(x))[:, :n_classes].argmax(-1)
+        return (pred == y).float().mean().item()
+
+    def _task_loss(t, batch_size: int) -> torch.Tensor:
+        x, y = t.sample(batch=batch_size)
+        logits = wml.emit_head_pi(wml.core(x))[:, :n_classes]
+        return F.cross_entropy(logits, y)
+
+    # --- Task 0 training (same for all methods) ---
+    for _ in range(steps):
+        loss = _task_loss(task0, 64)
+        opt.zero_grad(); loss.backward(); opt.step()
+
+    acc0_before = _eval(task0)
+
+    # --- EWC: snapshot Fisher and theta* after Task 0 ---
+    fisher: dict = {}
+    theta_star: dict = {}
+    if method == "ewc":
+        loader = [task0.sample(batch=64) for _ in range(8)]
+        fisher = estimate_fisher(wml, loader)
+        theta_star = {name: p.detach().clone() for name, p in wml.named_parameters()}
+
+    # --- Rehearsal: initialise buffer ---
+    buf: RehearsalBuffer | None = None
+    if method == "rehearsal":
+        buf = RehearsalBuffer(rehearsal_frac=rehearsal_frac, total_batch=64)
+        buf.store(task0)
+
+    # --- Task 1 training ---
+    for _ in range(steps):
+        if method == "none":
+            loss = _task_loss(task1, 64)
+        elif method == "rehearsal":
+            assert buf is not None
+            loss = buf.mixed_loss(wml, task1, n_classes=n_classes)
+        else:  # ewc
+            loss = _task_loss(task1, 64)
+            if fisher:
+                loss = loss + ewc_penalty(wml, fisher, theta_star, lam=lam)
+        opt.zero_grad(); loss.backward(); opt.step()
+
+    acc0_after = _eval(task0)
+    acc1       = _eval(task1)
+    forgetting = (acc0_before - acc0_after) / max(acc0_before, 1e-6)
+
+    return {
+        "forgetting":  forgetting,
+        "acc0_before": acc0_before,
+        "acc0_after":  acc0_after,
+        "acc1":        acc1,
+        "method":      method,
+        "lam":         lam if method == "ewc" else 0.0,
+    }
+
+
 if __name__ == "__main__":
     import sys
 
