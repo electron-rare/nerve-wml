@@ -17,7 +17,8 @@ The elegant coupling is therefore **SpikingKikiWML ⊑ BioCultureClient**:
 wrap a `SpikingKikiWML` in an adapter that satisfies the
 `BioCultureClient` Protocol. BioFieldWML then consumes spikingkiki
 spike trains exactly as it consumes Mock / CL1 / FinalSpark cultures.
-The Palacios SNN-PC VMP update becomes a Predictive-Coding learning
+The Lee SNN-PC VMP update (Lee et al. 2024, Frontiers Comp. Neurosci.,
+DOI 10.3389/fncom.2024.1338280) becomes a Predictive-Coding learning
 signal **on the silicon culture**, with no change to BioFieldWML
 itself.
 
@@ -125,11 +126,11 @@ client = SpikingKikiBioClient(substrate=sk)
 bio = BioFieldWML(id=1, bio_client=client, ...)
 
 # Now bio.step(nerve, t) drives sk via roundtrip(), reads spikes,
-# runs the Palacios VMP belief update, emits PRED/γ or ERR/θ
+# runs the Lee VMP belief update (Lee et al. 2024), emits PRED/γ or ERR/θ
 # Neuroletters as it does with any other BioCultureClient.
 ```
 
-The Palacios VMP update is **the learning signal** on spikingkiki:
+The Lee SNN-PC VMP update is **the learning signal** on spikingkiki:
 high posterior σ on a neuron group = ERROR / θ Neuroletter, which
 downstream learners can use to update spikingkiki's `codebook` or
 `input_proj` (out of scope for this design — it's the next step).
