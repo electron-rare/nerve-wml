@@ -43,9 +43,9 @@ def estimate_fisher(
     dict mapping parameter name → non-negative diagonal Fisher tensor
         (same shape as the parameter).
     """
-    # Assumes the first batch contains the highest class id (true for the dense
-    # 12-class HardSplitTask batches; pass n_classes explicitly if this assumption breaks).
-    n_classes = data_loader[0][1].max().item() + 1
+    # Infer n_classes from all batches to avoid IndexError when the first batch
+    # does not contain the highest class id (can happen at arbitrary seeds).
+    n_classes = max(y.max().item() for _, y in data_loader) + 1
     fisher: dict[str, Tensor] = {
         name: torch.zeros_like(p) for name, p in wml.named_parameters()
     }
